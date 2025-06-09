@@ -1,0 +1,40 @@
+/* --- Estilos Generales del Contenedor --- */
+/* Afecta el padding principal de la página */
+.block-container {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    padding-left: 5rem;
+    padding-right: 5rem;
+}
+
+/* --- Ocultar Elementos de Streamlit --- */
+/* Oculta el menú de hamburguesa y el pie de página de Streamlit */
+#MainMenu, footer, header {
+    visibility: hidden;
+}
+
+/* --- Contenedor del Header --- */
+.header-container {
+    padding: 0 !important;
+    /* Margen negativo para que la imagen del header se pegue a los bordes */
+    margin: -2rem -5rem 2rem -5rem;
+}
+
+
+/* --- Estilos para el enlace del pie de página --- */
+.footer-link {
+    text-align: center;
+}
+
+.footer-link a {
+    text-decoration: none;
+    color: #004a80; /* Un color azul oscuro corporativo */
+    font-weight: bold;
+    font-size: 1.1rem; /* Un poco más grande para que destaque */
+}
+
+/* Estilo para cuando el mouse pasa por encima del enlace */
+.footer-link a:hover {
+    text-decoration: underline;
+    color: #1032cc; /* Un color rojo para el hover */
+}

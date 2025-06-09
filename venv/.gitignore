@@ -1,0 +1,26 @@
+# Archivos de entorno y secretos
+# ¡NUNCA subas estos archivos a GitHub!
+.env
+*.json
+
+# Entorno virtual de Python
+# Esta carpeta es muy grande y específica de tu máquina
+/venv
+venv/
+
+# Base de datos vectorial local de ChromaDB
+# Se genera automáticamente al ejecutar la app
+/chroma_db
+chroma_db/
+
+# Archivos de caché de Python
+__pycache__/
+*.pyc
+
+# Archivos de caché y configuración del editor
+.vscode/
+.idea/
+
+# Archivos específicos del sistema operativo
+.DS_Store
+Thumbs.db
