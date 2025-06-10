@@ -38,28 +38,7 @@ def load_local_css(file_name):
 load_local_css(CONFIG["CSS_FILE_PATH"])
 
 # --- VERIFICADOR DE CREDENCIALES ---
-@st.cache_resource
-def verify_credentials():
-    st.sidebar.title("Estado del Sistema")
-    st.sidebar.info(f"Versión de SQLite3: **{sqlite3.sqlite_version}**")
-    if st.secrets.get("GOOGLE_API_KEY"): st.sidebar.success("✔️ Secret de Gemini encontrado.")
-    else: st.sidebar.error("❌ Secret de Gemini NO encontrado.")
-    if 'gcp_service_account' in st.secrets:
-        st.sidebar.success("✔️ Secrets de TTS encontrados.")
-        try:
-            creds_dict = dict(st.secrets['gcp_service_account'])
-            credentials = service_account.Credentials.from_service_account_info(creds_dict)
-            tts_client = texttospeech.TextToSpeechClient(credentials=credentials)
-            st.sidebar.success("✔️ Cliente TTS creado con éxito.")
-            return tts_client
-        except Exception as e:
-            st.sidebar.error(f"❌ FALLO AL CREAR CREDENCIALES TTS: {e}")
-            return None
-    else:
-        st.sidebar.error("❌ Secrets de TTS NO encontrados.")
-        return None
 
-tts_client = verify_credentials()
 
 # --- UI (Header, Título) ---
 with st.container():
