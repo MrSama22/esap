@@ -163,4 +163,4 @@ if prompt := st.chat_input("Escribe tu pregunta aquí..."):
 # --- ENLACE FINAL ---
 st.divider()
 st.markdown(f"<div class='footer-link'><a href='{CONFIG['OFFICIAL_WEBSITE_URL']}' target='_blank'>{CONFIG['WEBSITE_LINK_TEXT']}</a></div>", unsafe_allow_html=True)
-�
+
