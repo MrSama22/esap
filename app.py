@@ -27,7 +27,7 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 
 # --- CONFIGURACIÓN ---
-CONFIG = { "PAGE_TITLE": "Asistente CSD", "PAGE_ICON": "🎓", "HEADER_IMAGE": "header_banner.png", "APP_TITLE": "🎓 Asistente Virtual del Colegio Santo Domingo", "APP_SUBHEADER": "¡Hola! Estoy aquí para responder tus preguntas basándome en el documento oficial.", "WELCOME_MESSAGE": "¡Hola! Soy el asistente virtual del CSD. ¿En qué puedo ayudarte?", "SPINNER_MESSAGE": "Buscando y preparando tu respuesta...", "PDF_DOCUMENT_PATH": "documento.pdf", "OFFICIAL_WEBSITE_URL": "https://colegiosantodomingo.edu.co/", "WEBSITE_LINK_TEXT": "Visita la Página Web Oficial del Colegio", "TTS_VOICE_NAME": "es-US-Standard-B", "CSS_FILE_PATH": "styles.css" }
+CONFIG = { "PAGE_TITLE": "Asistente CSD", "PAGE_ICON": "🎓", "HEADER_IMAGE": "logo1.png", "APP_TITLE": "🎓 Asistente Virtual del Colegio Santo Domingo", "APP_SUBHEADER": "¡Hola! Estoy aquí para responder tus preguntas basándome en el documento oficial.", "WELCOME_MESSAGE": "¡Hola! Soy el asistente virtual del CSD. ¿En qué puedo ayudarte?", "SPINNER_MESSAGE": "Buscando y preparando tu respuesta...", "PDF_DOCUMENT_PATH": "documento.pdf", "OFFICIAL_WEBSITE_URL": "https://colegiosantodomingo.edu.co/", "WEBSITE_LINK_TEXT": "Visita la Página Web Oficial del Colegio", "TTS_VOICE_NAME": "es-US-Standard-B", "CSS_FILE_PATH": "styles.css" }
 
 # --- LÓGICA DE LA APLICACIÓN ---
 st.set_page_config(page_title=CONFIG["PAGE_TITLE"], page_icon=CONFIG["PAGE_ICON"], layout="wide")
