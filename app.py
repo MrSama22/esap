@@ -78,7 +78,7 @@ st.write(CONFIG["APP_SUBHEADER"])
 
 @st.cache_resource
 def load_rag_chain():
-    # Código de la función load_rag_chain... (sin cambios)
+    # Código de la función load_rag_chain...
     load_dotenv()
     api_key = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
     if not api_key:
@@ -87,7 +87,8 @@ def load_rag_chain():
     
     loader = PyPDFLoader(CONFIG["PDF_DOCUMENT_PATH"])
     docs = loader.load()
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, overlap=150)
+    # CORRECCIÓN: El argumento se llama 'chunk_overlap', no 'overlap'.
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
     chunks = text_splitter.split_documents(docs)
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
     vectorstore = Chroma.from_documents(documents=chunks, embedding=embeddings)
@@ -99,7 +100,7 @@ def load_rag_chain():
     return rag_chain
 
 def text_to_speech(text, voice_name):
-    # Código de la función text_to_speech... (sin cambios)
+    # Código de la función text_to_speech...
     try:
         # Intenta usar las credenciales de Streamlit Secrets
         if 'gcp_service_account' in st.secrets:
