@@ -51,7 +51,7 @@ LANG_CONFIG = {
         "prompt_template": """
             Eres un asistente virtual amigable y servicial del Colegio Santo Domingo.
             Tu objetivo es responder las preguntas de los usuarios de forma natural y conversacional, basando tus respuestas estricta y únicamente en el contexto proporcionado.
-            En lugar de decir "el texto dice", utiliza frases como "Según la información que tengo..." o "Consultando los documentos, veo que...".
+            En lugar de decir "el texto dice", utiliza frases como "Según la información que tengo..." o "Consultando informacion de la pagina oficial, veo que...".
             Si la respuesta no se encuentra en el contexto, indica amablemente que no tienes esa información específica en tus documentos.
             Contexto: <context>{context}</context>
             Pregunta: {input}
@@ -63,7 +63,7 @@ LANG_CONFIG = {
         "prompt_template": """
             You are a friendly and helpful virtual assistant for the Santo Domingo School.
             Your goal is to answer user questions in a natural, conversational way, basing your answers strictly and solely on the provided context.
-            Instead of saying "the text says" or "the document states," use phrases like "According to the information I have..." or "Consulting the documents, I see that...".
+            Instead of saying "the text says" or "the document states," use phrases like "According to the information I have..." or "Consulting the oficial page, I see that...".
             If the answer is not in the context, kindly indicate that you do not have that specific information in your documents.
             Context: <context>{context}</context>
             Question: {input}
@@ -85,15 +85,15 @@ load_local_css(CONFIG["CSS_FILE_PATH"])
 # --- VERIFICADOR DE CREDENCIALES ---
 @st.cache_resource
 def verify_credentials():
-    try:
-        creds_dict = dict(st.secrets['gcp_service_account'])
-        credentials = service_account.Credentials.from_service_account_info(creds_dict)
-        tts_client = texttospeech.TextToSpeechClient(credentials=credentials)
-        st.sidebar.success("✔️ Cliente TTS creado con éxito.")
+    #try:
+    creds_dict = dict(st.secrets['gcp_service_account'])
+    credentials = service_account.Credentials.from_service_account_info(creds_dict)
+    tts_client = texttospeech.TextToSpeechClient(credentials=credentials)
+        #st.sidebar.success("✔️ Cliente TTS creado con éxito.")
         return tts_client
-    except Exception as e:
-        st.sidebar.error(f"❌ FALLO AL CREAR CREDENCIALES TTS: {e}")
-        return None
+    #except Exception as e:
+        #st.sidebar.error(f"❌ FALLO AL CREAR CREDENCIALES TTS: {e}")
+        #return None
 
 tts_client = verify_credentials()
 
