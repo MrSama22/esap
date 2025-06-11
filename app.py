@@ -1,5 +1,6 @@
 # ======================================================================================
 # --- PARCHE PARA SQLITE3 EN STREAMLIT CLOUD ---
+# codigo funcional 1
 try:
     __import__('pysqlite3')
     import sys
