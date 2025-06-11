@@ -90,7 +90,7 @@ def verify_credentials():
     credentials = service_account.Credentials.from_service_account_info(creds_dict)
     tts_client = texttospeech.TextToSpeechClient(credentials=credentials)
         #st.sidebar.success("✔️ Cliente TTS creado con éxito.")
-        return tts_client
+    return tts_client
     #except Exception as e:
         #st.sidebar.error(f"❌ FALLO AL CREAR CREDENCIALES TTS: {e}")
         #return None
