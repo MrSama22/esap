@@ -39,6 +39,8 @@ load_local_css(CONFIG["CSS_FILE_PATH"])
 
 # --- VERIFICADOR DE CREDENCIALES ---
 
+tts_client = verify_credentials()
+
 
 # --- UI (Header, Título) ---
 with st.container():
