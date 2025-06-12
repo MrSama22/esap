@@ -1,6 +1,5 @@
 # ======================================================================================
 # --- PARCHE PARA SQLITE3 EN STREAMLIT CLOUD ---
-# codigo funcional 1
 try:
     __import__('pysqlite3')
     import sys
@@ -27,10 +26,11 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 from langdetect import detect, LangDetectException
 
-# --- NUEVO IMPORT PARA EL RETRIEVER MEJORADO ---
-from langchain.retrievers.multi_query import MultiQueryRetriever
+# --- NUEVOS IMPORTS PARA EL RETRIEVER DE COMPRESIÓN ---
+from langchain.retrievers import ContextualCompressionRetriever
+from langchain.retrievers.document_compressors import LLMChainExtractor
 
-
+# ... (El resto de tu configuración CONFIG y LANG_CONFIG se mantiene igual) ...
 # --- CONFIGURACIÓN ---
 CONFIG = {
     "PAGE_TITLE": "Asistente CSD",
@@ -46,36 +46,44 @@ CONFIG = {
     "CSS_FILE_PATH": "styles.css"
 }
 
-# --- CONFIGURACIÓN MULTILINGÜE ---
+# --- NUEVO: CONFIGURACIÓN MULTILINGÜE ---
 LANG_CONFIG = {
     "es": {
         "tts_voice": {"language_code": "es-US", "name": "es-US-Standard-B"},
         "prompt_template": """
             Eres un asistente virtual amigable y servicial del Colegio Santo Domingo Bilingüe.
             Tu objetivo es responder las preguntas de los usuarios de forma natural y conversacional, basando tus respuestas estricta y únicamente en el contexto proporcionado.
-            En lugar de decir "el texto dice", utiliza frases como "Según la información que tengo..." o "Consultando informacion de la página oficial, veo que...".
-            Si la respuesta no se encuentra en el contexto, indica amablemente que no tienes esa información específica.
-            Contexto: <context>{context}</context>
+            Usa un tono amable y directo. Si la información está en el contexto, preséntala claramente.
+            Si la respuesta no se encuentra en el contexto, indica amablemente que no tienes esa información específica en tus documentos.
+            
+            Contexto:
+            <context>{context}</context>
+            
             Pregunta: {input}
-            Respuesta conversacional:
+            
+            Respuesta:
         """
     },
     "en": {
-        "tts_voice": {"language_code": "en-US", "name": "en-US-Wavenet-C"},
+        "tts_voice": {"language_code": "en-US", "name": "en-US-Wavenet-C"}, # Voz nativa en inglés
         "prompt_template": """
             You are a friendly and helpful virtual assistant for the Santo Domingo Bilingual School.
             Your goal is to answer user questions in a natural, conversational way, basing your answers strictly and solely on the provided context.
-            Instead of saying "the text says" or "the document states," use phrases like "According to the information I have..." or "Consulting the oficial page, I see that...".
-            If the answer is not in the context, kindly indicate that you do not have that specific information.
-            Context: <context>{context}</context>
+            Use a friendly and direct tone. If the information is in the context, present it clearly.
+            If the answer is not in the context, kindly indicate that you do not have that specific information in your documents.
+            
+            Context:
+            <context>{context}</context>
+            
             Question: {input}
-            Conversational Answer:
+            
+            Answer:
         """
     }
 }
-DEFAULT_LANG = "es"
+DEFAULT_LANG = "es" # Idioma por defecto si la detección falla
 
-# --- LÓGICA DE LA APLICACIÓN ---
+# --- LÓGICA DE LA APLICACIÓN (el resto del código hasta la inicialización de la IA se mantiene igual)
 st.set_page_config(page_title=CONFIG["PAGE_TITLE"], page_icon=CONFIG["PAGE_ICON"], layout="wide")
 
 def load_local_css(file_name):
@@ -84,7 +92,6 @@ def load_local_css(file_name):
             st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 load_local_css(CONFIG["CSS_FILE_PATH"])
 
-# --- VERIFICADOR DE CREDENCIALES ---
 @st.cache_resource
 def verify_credentials():
     try:
@@ -97,7 +104,6 @@ def verify_credentials():
 
 tts_client = verify_credentials()
 
-# --- UI (Header, Título) ---
 with st.container():
     st.markdown('<div class="header-container">', unsafe_allow_html=True)
     if os.path.exists(CONFIG["HEADER_IMAGE"]):
@@ -106,8 +112,6 @@ with st.container():
 st.title(CONFIG["APP_TITLE"])
 st.write(CONFIG["APP_SUBHEADER"])
 
-
-# --- FUNCIONES CORE (TTS y RAG) ---
 def text_to_speech(client, text, voice_params):
     if not client: return None
     try:
@@ -123,7 +127,7 @@ def text_to_speech(client, text, voice_params):
         st.error(f"Error al generar el audio: {e}", icon="🚨")
         return None
 
-# --- MODIFICACIÓN CLAVE: Se implementa el MultiQueryRetriever para respuestas más inteligentes ---
+# --- MODIFICACIÓN CLAVE: Se implementa el ContextualCompressionRetriever para máxima precisión ---
 @st.cache_resource
 def initialize_rag_components():
     load_dotenv()
@@ -133,34 +137,40 @@ def initialize_rag_components():
 
     loader = PyPDFLoader(CONFIG["PDF_DOCUMENT_PATH"])
     docs = loader.load()
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200) # Aumentamos el overlap ligeramente
+    
+    # Ajuste en el chunking para mejorar la cohesión del texto
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     chunks = text_splitter.split_documents(docs)
+    
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
     vectorstore = Chroma.from_documents(documents=chunks, embedding=embeddings)
     
-    # El retriever base ahora buscará un poco más de contexto (k=5)
-    base_retriever = vectorstore.as_retriever(search_kwargs={"k": 5}) 
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key, temperature=0)
     
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key, temperature=0) # temperature=0 para que las sub-preguntas sean más predecibles
+    # 1. Creamos un retriever base que busca más documentos (ej. 10)
+    base_retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
     
-    # Creamos el MultiQueryRetriever.
-    # Le decimos que use nuestro LLM para generar las preguntas y el retriever base para buscar.
-    multi_query_retriever = MultiQueryRetriever.from_llm(
-        retriever=base_retriever, llm=llm
+    # 2. Creamos un "compresor" que usará el LLM para extraer la información relevante
+    document_compressor = LLMChainExtractor.from_llm(llm)
+    
+    # 3. Creamos el retriever de compresión contextual
+    # Este retriever primero llamará al 'base_retriever' y luego pasará los resultados al 'document_compressor'
+    compression_retriever = ContextualCompressionRetriever(
+        base_compressor=document_compressor, 
+        base_retriever=base_retriever
     )
     
     # Devuelve el retriever "inteligente" y el LLM para el paso de respuesta final
-    return multi_query_retriever, llm
+    return compression_retriever, llm
 
 # --- INICIALIZACIÓN DE LA IA ---
 try:
-    # La variable ahora se llama 'retriever' pero contiene el MultiQueryRetriever
     retriever, llm = initialize_rag_components() 
 except Exception as e:
     st.error(f"Ocurrió un error crítico al inicializar la IA: {e}", icon="🚨")
     st.stop()
 
-# --- LÓGICA DEL CHAT (Sin cambios en esta sección) ---
+# --- LÓGICA DEL CHAT (Sin cambios en esta sección, funcionará con el nuevo retriever) ---
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": CONFIG["WELCOME_MESSAGE"]}]
 
@@ -193,7 +203,7 @@ if prompt := st.chat_input("Escribe tu pregunta aquí... / Type your question he
                 prompt_obj = ChatPromptTemplate.from_template(prompt_template_str)
                 document_chain = create_stuff_documents_chain(llm, prompt_obj)
                 
-                # La cadena ahora usará nuestro retriever mejorado
+                # La cadena ahora usará nuestro retriever de compresión contextual, mucho más preciso
                 rag_chain = create_retrieval_chain(retriever, document_chain)
 
                 response = rag_chain.invoke({"input": prompt})
