@@ -154,7 +154,7 @@ def initialize_rag_components():
     llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key, temperature=0)
     
     # 1. Creamos un retriever base que busca más documentos (ej. 10)
-    base_retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
+    base_retriever = vectorstore.as_retriever(search_kwargs={"k": 30})
     
     # 2. Creamos un "compresor" que usará el LLM para extraer la información relevante
     document_compressor = LLMChainExtractor.from_llm(llm)
