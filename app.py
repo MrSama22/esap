@@ -56,8 +56,8 @@ LANG_CONFIG = {
             **Instrucciones Críticas:**
             1.  **Búsqueda Exhaustiva:** Antes de responder, revisa CUIDADOSAMENTE y de forma COMPLETA todo el 'Contexto' que se te ha entregado. La respuesta que buscas SIEMPRE estará en ese texto. No asumas que no la tienes. Busca en cada rincón del contexto proporcionado.
             2.  **Precisión Absoluta:** Basa tu respuesta estricta y únicamente en la información encontrada en el 'Contexto'. No inventes, infieras ni añadas información externa.
-            3.  **Respuesta Directa:** Si encuentras la respuesta, preséntala de forma clara y concisa. Por ejemplo, si te preguntan por una persona, responde directamente con su nombre y cargo.
-            4.  **Manejo de Incertidumbre:** Solo si después de una búsqueda exhaustiva en el 'Contexto' no encuentras una respuesta directa, y únicamente en ese caso, indica amablemente que no tienes la información específica en el documento.
+            3.  **Respuesta Directa:** Si encuentras la respuesta, preséntala de forma clara y concisa. Por ejemplo, si te preguntan por una persona, responde directamente con su nombre y cargo y una breve descripcion.
+            4.  **Manejo de Incertidumbre:** Solo si después de una búsqueda exhaustiva en el 'Contexto' no encuentras una respuesta directa, y únicamente en ese caso, indica amablemente que no tienes la información específica.
 
             **Contexto:**
             <context>{context}</context>
@@ -75,8 +75,8 @@ LANG_CONFIG = {
             **Critical Instructions:**
             1.  **Exhaustive Search:** Before answering, CAREFULLY and COMPLETELY review all the 'Context' you have been given. The answer you are looking for will ALWAYS be in that text. Do not assume you don't have it. Search every corner of the provided context.
             2.  **Absolute Precision:** Base your answer strictly and solely on the information found in the 'Context'. Do not invent, infer, or add external information.
-            3.  **Direct Answer:** If you find the answer, present it clearly and concisely. For example, if asked about a person, answer directly with their name and role.
-            4.  **Handling Uncertainty:** Only if, after an exhaustive search of the 'Context', you do not find a direct answer, and only in that case, kindly indicate that you do not have the specific information in the document.
+            3.  **Direct Answer:** If you find the answer, present it clearly and concisely. For example, if asked about a person, answer directly with their name and role and a short description.
+            4.  **Handling Uncertainty:** Only if, after an exhaustive search of the 'Context', you do not find a direct answer, and only in that case, kindly indicate that you do not have the specific information.
 
             **Context:**
             <context>{context}</context>
