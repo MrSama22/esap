@@ -25,7 +25,11 @@ from langchain_community.vectorstores import Chroma
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
-from langdetect import detect, LangDetectException # --- NUEVO ---
+from langdetect import detect, LangDetectException
+
+# --- NUEVO IMPORT PARA EL RETRIEVER MEJORADO ---
+from langchain.retrievers.multi_query import MultiQueryRetriever
+
 
 # --- CONFIGURACIÓN ---
 CONFIG = {
@@ -42,9 +46,7 @@ CONFIG = {
     "CSS_FILE_PATH": "styles.css"
 }
 
-# --- NUEVO: CONFIGURACIÓN MULTILINGÜE ---
-# Mapeo de códigos de idioma (de langdetect) a configuraciones de voz y prompts.
-# Puedes añadir más idiomas aquí (ej. "fr" para francés).
+# --- CONFIGURACIÓN MULTILINGÜE ---
 LANG_CONFIG = {
     "es": {
         "tts_voice": {"language_code": "es-US", "name": "es-US-Standard-B"},
@@ -59,7 +61,7 @@ LANG_CONFIG = {
         """
     },
     "en": {
-        "tts_voice": {"language_code": "en-US", "name": "en-US-Wavenet-C"}, # Voz nativa en inglés
+        "tts_voice": {"language_code": "en-US", "name": "en-US-Wavenet-C"},
         "prompt_template": """
             You are a friendly and helpful virtual assistant for the Santo Domingo Bilingual School.
             Your goal is to answer user questions in a natural, conversational way, basing your answers strictly and solely on the provided context.
@@ -71,7 +73,7 @@ LANG_CONFIG = {
         """
     }
 }
-DEFAULT_LANG = "es" # Idioma por defecto si la detección falla
+DEFAULT_LANG = "es"
 
 # --- LÓGICA DE LA APLICACIÓN ---
 st.set_page_config(page_title=CONFIG["PAGE_TITLE"], page_icon=CONFIG["PAGE_ICON"], layout="wide")
@@ -85,15 +87,13 @@ load_local_css(CONFIG["CSS_FILE_PATH"])
 # --- VERIFICADOR DE CREDENCIALES ---
 @st.cache_resource
 def verify_credentials():
-    #try:
-    creds_dict = dict(st.secrets['gcp_service_account'])
-    credentials = service_account.Credentials.from_service_account_info(creds_dict)
-    tts_client = texttospeech.TextToSpeechClient(credentials=credentials)
-        #st.sidebar.success("✔️ Cliente TTS creado con éxito.")
-    return tts_client
-    #except Exception as e:
-        #st.sidebar.error(f"❌ FALLO AL CREAR CREDENCIALES TTS: {e}")
-        #return None
+    try:
+        creds_dict = dict(st.secrets['gcp_service_account'])
+        credentials = service_account.Credentials.from_service_account_info(creds_dict)
+        tts_client = texttospeech.TextToSpeechClient(credentials=credentials)
+        return tts_client
+    except Exception as e:
+        return None
 
 tts_client = verify_credentials()
 
@@ -108,8 +108,6 @@ st.write(CONFIG["APP_SUBHEADER"])
 
 
 # --- FUNCIONES CORE (TTS y RAG) ---
-
-# --- MODIFICADO: La función ahora recibe los parámetros de voz dinámicamente ---
 def text_to_speech(client, text, voice_params):
     if not client: return None
     try:
@@ -125,7 +123,7 @@ def text_to_speech(client, text, voice_params):
         st.error(f"Error al generar el audio: {e}", icon="🚨")
         return None
 
-# --- MODIFICADO: La función ahora solo inicializa los componentes base que no cambian ---
+# --- MODIFICACIÓN CLAVE: Se implementa el MultiQueryRetriever para respuestas más inteligentes ---
 @st.cache_resource
 def initialize_rag_components():
     load_dotenv()
@@ -135,24 +133,34 @@ def initialize_rag_components():
 
     loader = PyPDFLoader(CONFIG["PDF_DOCUMENT_PATH"])
     docs = loader.load()
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200) # Aumentamos el overlap ligeramente
     chunks = text_splitter.split_documents(docs)
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
     vectorstore = Chroma.from_documents(documents=chunks, embedding=embeddings)
-    retriever = vectorstore.as_retriever()
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key)
     
-    # Devuelve los componentes que se reusarán en cada pregunta
-    return retriever, llm
+    # El retriever base ahora buscará un poco más de contexto (k=5)
+    base_retriever = vectorstore.as_retriever(search_kwargs={"k": 5}) 
+    
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key, temperature=0) # temperature=0 para que las sub-preguntas sean más predecibles
+    
+    # Creamos el MultiQueryRetriever.
+    # Le decimos que use nuestro LLM para generar las preguntas y el retriever base para buscar.
+    multi_query_retriever = MultiQueryRetriever.from_llm(
+        retriever=base_retriever, llm=llm
+    )
+    
+    # Devuelve el retriever "inteligente" y el LLM para el paso de respuesta final
+    return multi_query_retriever, llm
 
 # --- INICIALIZACIÓN DE LA IA ---
 try:
-    retriever, llm = initialize_rag_components()
+    # La variable ahora se llama 'retriever' pero contiene el MultiQueryRetriever
+    retriever, llm = initialize_rag_components() 
 except Exception as e:
     st.error(f"Ocurrió un error crítico al inicializar la IA: {e}", icon="🚨")
     st.stop()
 
-# --- LÓGICA DEL CHAT ---
+# --- LÓGICA DEL CHAT (Sin cambios en esta sección) ---
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": CONFIG["WELCOME_MESSAGE"]}]
 
@@ -171,31 +179,27 @@ if prompt := st.chat_input("Escribe tu pregunta aquí... / Type your question he
     with chat_container:
         with st.chat_message("assistant"):
             with st.spinner(CONFIG["SPINNER_MESSAGE"]):
-                # --- NUEVO: Lógica de detección de idioma y construcción dinámica de la cadena ---
                 try:
-                    # 1. Detectar idioma del prompt del usuario
                     lang_code = detect(prompt)
                     if lang_code not in LANG_CONFIG:
-                        lang_code = DEFAULT_LANG # Usar idioma por defecto si no está soportado
+                        lang_code = DEFAULT_LANG
                 except LangDetectException:
-                    lang_code = DEFAULT_LANG # Usar por defecto si la detección falla
+                    lang_code = DEFAULT_LANG
 
-                # 2. Seleccionar la plantilla de prompt y la voz TTS según el idioma
                 selected_lang_config = LANG_CONFIG[lang_code]
                 prompt_template_str = selected_lang_config["prompt_template"]
                 tts_voice_params = selected_lang_config["tts_voice"]
 
-                # 3. Construir la cadena de RAG con el prompt del idioma correcto
                 prompt_obj = ChatPromptTemplate.from_template(prompt_template_str)
                 document_chain = create_stuff_documents_chain(llm, prompt_obj)
+                
+                # La cadena ahora usará nuestro retriever mejorado
                 rag_chain = create_retrieval_chain(retriever, document_chain)
 
-                # 4. Invocar la cadena y generar respuesta
                 response = rag_chain.invoke({"input": prompt})
                 respuesta_ia = response["answer"]
                 st.markdown(respuesta_ia)
                 
-                # 5. Generar audio con la voz del idioma correcto
                 audio_content = text_to_speech(tts_client, respuesta_ia, tts_voice_params)
                 if audio_content:
                     st.audio(audio_content, autoplay=True)
