@@ -33,12 +33,12 @@ from langchain.retrievers.document_compressors import LLMChainExtractor
 # ... (El resto de tu configuración CONFIG y LANG_CONFIG se mantiene igual) ...
 # --- CONFIGURACIÓN ---
 CONFIG = {
-    "PAGE_TITLE": "Asistente CSD",
+    "PAGE_TITLE": "Asistente CSDB",
     "PAGE_ICON": "🎓",
     "HEADER_IMAGE": "logo1.png",
-    "APP_TITLE": "🎓 Asistente Virtual del Colegio Santo Domingo",
+    "APP_TITLE": "🎓 Asistente Virtual del Colegio Santo Domingo BIilingüe",
     "APP_SUBHEADER": "¡Hola! Estoy aquí para responder tus preguntas basándome en el documento oficial.",
-    "WELCOME_MESSAGE": "¡Hola! Soy el asistente virtual del CSD. ¿En qué puedo ayudarte? / Hello! I'm the CSD virtual assistant. How can I help you?",
+    "WELCOME_MESSAGE": "¡Hola! Soy el asistente virtual del CSD. ¿En qué puedo ayudarte? / Hello! I'm the CSDB virtual assistant. How can I help you?",
     "SPINNER_MESSAGE": "Buscando y preparando tu respuesta...",
     "PDF_DOCUMENT_PATH": "documento.pdf",
     "OFFICIAL_WEBSITE_URL": "https://colegiosantodomingo.edu.co/",
@@ -52,9 +52,9 @@ LANG_CONFIG = {
         "tts_voice": {"language_code": "es-US", "name": "es-US-Standard-B"},
         "prompt_template": """
             Eres un asistente virtual amigable y servicial del Colegio Santo Domingo Bilingüe.
-            Tu objetivo es responder las preguntas de los usuarios de forma natural y conversacional, basando tus respuestas estricta y únicamente en el contexto proporcionado.
+            Tu objetivo es responder las preguntas de los usuarios de forma natural y conversacional, basando tus respuestas estricta y únicamente en el contexto proporcionado y indagando en el documento una respuesta que se adapte perrfectamente.
             Usa un tono amable y directo. Si la información está en el contexto, preséntala claramente.
-            Si la respuesta no se encuentra en el contexto, indica amablemente que no tienes esa información específica en tus documentos.
+            Si la respuesta no se encuentra en el contexto, indica amablemente que no tienes esa información específica.
             
             Contexto:
             <context>{context}</context>
@@ -68,9 +68,9 @@ LANG_CONFIG = {
         "tts_voice": {"language_code": "en-US", "name": "en-US-Wavenet-C"}, # Voz nativa en inglés
         "prompt_template": """
             You are a friendly and helpful virtual assistant for the Santo Domingo Bilingual School.
-            Your goal is to answer user questions in a natural, conversational way, basing your answers strictly and solely on the provided context.
+            Your goal is to answer user questions in a natural, conversational way, basing your answers strictly and solely on the provided context giving complete answers by reading all the document for answers.
             Use a friendly and direct tone. If the information is in the context, present it clearly.
-            If the answer is not in the context, kindly indicate that you do not have that specific information in your documents.
+            If the answer is not in the context, kindly indicate that you do not have that specific information .
             
             Context:
             <context>{context}</context>
