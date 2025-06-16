@@ -246,7 +246,7 @@ def main():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
             if message.get("audio"):
-                st.audio(message["audio"], format='audio/mp3',autoplay=True)
+                st.audio(message["audio"], format='audio/mp3' , autoplay=True )
 
     # 3. MANEJAR LAS ENTRADAS DEL USUARIO
     # Entrada de texto (sin cambios)
