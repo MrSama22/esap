@@ -15,6 +15,8 @@ from dotenv import load_dotenv
 
 # --- LIBRERÍAS REQUERIDAS ---
 from google.cloud import texttospeech
+# --- NUEVO: Importación para Speech-to-Text ---
+from google.cloud import speech
 from google.oauth2 import service_account
 from google.api_core import exceptions as google_exceptions
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
@@ -26,12 +28,14 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 from langdetect import detect, LangDetectException
 
+# --- NUEVO: Importación del componente de grabadora de audio ---
+from st_audiorec import st_audiorec
+
 # --- NUEVOS IMPORTS PARA EL RETRIEVER DE COMPRESIÓN ---
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
 
-# ... (El resto de tu configuración CONFIG y LANG_CONFIG se mantiene igual) ...
-# --- CONFIGURACIÓN ---
+# --- CONFIGURACIÓN (sin cambios) ---
 CONFIG = {
     "PAGE_TITLE": "Asistente CSDB",
     "PAGE_ICON": "🎓",
@@ -46,7 +50,7 @@ CONFIG = {
     "CSS_FILE_PATH": "styles.css"
 }
 
-# --- NUEVO: CONFIGURACIÓN MULTILINGÜE ---
+# --- CONFIGURACIÓN MULTILINGÜE (sin cambios) ---
 LANG_CONFIG = {
     "es": {
         "tts_voice": {"language_code": "es-US", "name": "es-US-Standard-B"},
@@ -55,7 +59,6 @@ LANG_CONFIG = {
 
             **Instrucciones Críticas:**
             1.  **Búsqueda Exhaustiva:** Antes de responder, revisa CUIDADOSAMENTE y de forma COMPLETA todo el 'Contexto' que se te ha entregado. La respuesta que buscas SIEMPRE estará en ese texto. No asumas que no la tienes. Busca en cada rincón del contexto proporcionado.
-
             3.  **Respuesta Directa:** Si encuentras la respuesta, preséntala de forma clara y concisa. Por ejemplo, si te preguntan por una persona, responde directamente con su nombre y cargo y una breve descripcion.
             4.  **Manejo de Incertidumbre:** Solo si después de una búsqueda exhaustiva en el 'Contexto' no encuentras una respuesta directa, y únicamente en ese caso, indica amablemente que no tienes la información específica.
 
@@ -86,9 +89,9 @@ LANG_CONFIG = {
         """
     }
 }
-DEFAULT_LANG = "es" # Idioma por defecto si la detección falla
+DEFAULT_LANG = "es"
 
-# --- LÓGICA DE LA APLICACIÓN (el resto del código hasta la inicialización de la IA se mantiene igual)
+# --- LÓGICA DE LA APLICACIÓN ---
 st.set_page_config(page_title=CONFIG["PAGE_TITLE"], page_icon=CONFIG["PAGE_ICON"], layout="wide")
 
 def load_local_css(file_name):
@@ -97,17 +100,21 @@ def load_local_css(file_name):
             st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 load_local_css(CONFIG["CSS_FILE_PATH"])
 
+# --- MODIFICADO: La función ahora verifica y devuelve ambos clientes (TTS y STT) ---
 @st.cache_resource
-def verify_credentials():
+def verify_credentials_and_get_clients():
     try:
         creds_dict = dict(st.secrets['gcp_service_account'])
         credentials = service_account.Credentials.from_service_account_info(creds_dict)
         tts_client = texttospeech.TextToSpeechClient(credentials=credentials)
-        return tts_client
+        # --- NUEVO: Inicializar el cliente de Speech-to-Text ---
+        stt_client = speech.SpeechClient(credentials=credentials)
+        return tts_client, stt_client
     except Exception as e:
-        return None
+        st.error(f"Error al verificar credenciales de Google Cloud: {e}", icon="🚨")
+        return None, None
 
-tts_client = verify_credentials()
+tts_client, stt_client = verify_credentials_and_get_clients()
 
 with st.container():
     st.markdown('<div class="header-container">', unsafe_allow_html=True)
@@ -117,6 +124,7 @@ with st.container():
 st.title(CONFIG["APP_TITLE"])
 st.write(CONFIG["APP_SUBHEADER"])
 
+# --- Función TTS (sin cambios) ---
 def text_to_speech(client, text, voice_params):
     if not client: return None
     try:
@@ -132,7 +140,36 @@ def text_to_speech(client, text, voice_params):
         st.error(f"Error al generar el audio: {e}", icon="🚨")
         return None
 
-# --- MODIFICACIÓN CLAVE: Se implementa el ContextualCompressionRetriever para máxima precisión ---
+# --- NUEVO: Función para convertir voz a texto ---
+def speech_to_text(client, audio_bytes):
+    if not client or not audio_bytes:
+        return None
+    
+    try:
+        audio = speech.RecognitionAudio(content=audio_bytes)
+        # Configuración para reconocer tanto español de Colombia como inglés de EE. UU.
+        # La API detectará automáticamente cuál se está hablando.
+        config = speech.RecognitionConfig(
+            encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+            sample_rate_hertz=16000, # st-audiorec por defecto usa esta frecuencia de muestreo
+            language_codes=["es-CO", "en-US"], # ¡Importante para el bilingüismo!
+            enable_automatic_punctuation=True
+        )
+        
+        with st.spinner("Transcribiendo tu voz..."):
+            response = client.recognize(config=config, audio=audio)
+        
+        if response.results and response.results[0].alternatives:
+            return response.results[0].alternatives[0].transcript
+        else:
+            st.warning("No pude entender lo que dijiste. Por favor, intenta de nuevo.", icon="🤔")
+            return None
+            
+    except Exception as e:
+        st.error(f"Error al transcribir el audio: {e}", icon="🚨")
+        return None
+
+
 @st.cache_resource
 def initialize_rag_components():
     load_dotenv()
@@ -143,7 +180,6 @@ def initialize_rag_components():
     loader = PyPDFLoader(CONFIG["PDF_DOCUMENT_PATH"])
     docs = loader.load()
     
-    # Ajuste en el chunking para mejorar la cohesión del texto
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     chunks = text_splitter.split_documents(docs)
     
@@ -152,49 +188,40 @@ def initialize_rag_components():
     
     llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key, temperature=0)
     
-    # 1. Creamos un retriever base que busca más documentos (ej. 10)
     base_retriever = vectorstore.as_retriever(search_kwargs={"k": 30})
-    
-    # 2. Creamos un "compresor" que usará el LLM para extraer la información relevante
     document_compressor = LLMChainExtractor.from_llm(llm)
-    
-    # 3. Creamos el retriever de compresión contextual
-    # Este retriever primero llamará al 'base_retriever' y luego pasará los resultados al 'document_compressor'
     compression_retriever = ContextualCompressionRetriever(
         base_compressor=document_compressor, 
         base_retriever=base_retriever
     )
     
-    # Devuelve el retriever "inteligente" y el LLM para el paso de respuesta final
     return compression_retriever, llm
 
 # --- INICIALIZACIÓN DE LA IA ---
 try:
-    retriever, llm = initialize_rag_components() 
+    retriever, llm = initialize_rag_components()
 except Exception as e:
     st.error(f"Ocurrió un error crítico al inicializar la IA: {e}", icon="🚨")
     st.stop()
 
-# --- LÓGICA DEL CHAT (Sin cambios en esta sección, funcionará con el nuevo retriever) ---
+# --- LÓGICA DEL CHAT ---
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": CONFIG["WELCOME_MESSAGE"]}]
 
-chat_container = st.container()
-with chat_container:
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
-if prompt := st.chat_input("Escribe tu pregunta aquí... / Type your question here..."):
+# --- MODIFICADO: Lógica de procesamiento refactorizada en una función ---
+def process_and_display_response(prompt: str):
+    # Añadir el mensaje del usuario al historial y mostrarlo en la UI
     st.session_state.messages.append({"role": "user", "content": prompt})
     with chat_container:
         with st.chat_message("user"):
             st.markdown(prompt)
 
+    # Procesar la respuesta del asistente
     with chat_container:
         with st.chat_message("assistant"):
             with st.spinner(CONFIG["SPINNER_MESSAGE"]):
                 try:
+                    # Detección de idioma y configuración
                     lang_code = detect(prompt)
                     if lang_code not in LANG_CONFIG:
                         lang_code = DEFAULT_LANG
@@ -205,22 +232,52 @@ if prompt := st.chat_input("Escribe tu pregunta aquí... / Type your question he
                 prompt_template_str = selected_lang_config["prompt_template"]
                 tts_voice_params = selected_lang_config["tts_voice"]
 
+                # Creación y ejecución de la cadena RAG
                 prompt_obj = ChatPromptTemplate.from_template(prompt_template_str)
                 document_chain = create_stuff_documents_chain(llm, prompt_obj)
-                
-                # La cadena ahora usará nuestro retriever de compresión contextual, mucho más preciso
                 rag_chain = create_retrieval_chain(retriever, document_chain)
 
                 response = rag_chain.invoke({"input": prompt})
                 respuesta_ia = response["answer"]
-                st.markdown(respuesta_ia)
                 
+                # Mostrar respuesta y generar audio
+                st.markdown(respuesta_ia)
                 audio_content = text_to_speech(tts_client, respuesta_ia, tts_voice_params)
                 if audio_content:
                     st.audio(audio_content, autoplay=True)
                 
+                # Añadir la respuesta del asistente al historial
                 st.session_state.messages.append({"role": "assistant", "content": respuesta_ia})
 
-# --- ENLACE FINAL (Más discreto) ---
+# --- DIBUJAR LA INTERFAZ DEL CHAT ---
+chat_container = st.container()
+with chat_container:
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+# --- MODIFICADO: Aceptar tanto entrada de voz como de texto ---
+st.write("👇 **Habla** con el asistente o **escribe** tu pregunta abajo")
+
+col1, col2 = st.columns([1, 6]) # Columna para el botón de voz
+
+with col1:
+    # --- NUEVO: Componente de grabadora de voz ---
+    # `key` es importante para que Streamlit maneje el estado correctamente
+    audio_bytes = st_audiorec(key="audio_recorder")
+
+# Si se grabó audio, transcríbelo y procesa la pregunta
+if audio_bytes:
+    transcribed_prompt = speech_to_text(stt_client, audio_bytes)
+    if transcribed_prompt:
+        process_and_display_response(transcribed_prompt)
+
+# Campo de texto para la entrada tradicional
+text_prompt = st.chat_input("Escribe tu pregunta aquí... / Type your question here...")
+if text_prompt:
+    process_and_display_response(text_prompt)
+
+
+# --- ENLACE FINAL ---
 st.divider()
 st.caption(f"Para más información, puedes visitar la [{CONFIG['WEBSITE_LINK_TEXT']}]({CONFIG['OFFICIAL_WEBSITE_URL']}).")
