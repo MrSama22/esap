@@ -168,6 +168,7 @@ def speech_to_text(client, audio_bytes):
         return None
 
     try:
+        # Convierte a mono para asegurar compatibilidad
         audio_segment = AudioSegment.from_file(io.BytesIO(audio_bytes))
         audio_segment = audio_segment.set_channels(1)
         
@@ -183,8 +184,7 @@ def speech_to_text(client, audio_bytes):
             enable_automatic_punctuation=True
         )
         
-        with st.spinner("Transcribiendo tu voz..."):
-            response = client.recognize(config=config, audio=audio)
+        response = client.recognize(config=config, audio=audio)
         
         if response.results and response.results[0].alternatives:
             return response.results[0].alternatives[0].transcript
@@ -218,7 +218,10 @@ def main():
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": CONFIG["WELCOME_MESSAGE"]}]
 
+    # --- INICIO DE LÓGICA MODIFICADA ---
+
     def process_and_display_response(prompt: str):
+        # Añade el prompt del usuario al historial para que se muestre en la UI
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         with st.chat_message("assistant"):
@@ -247,72 +250,60 @@ def main():
                     if audio_content:
                         st.audio(audio_content, autoplay=True)
                     
+                    # Añade la respuesta del asistente al historial
                     st.session_state.messages.append({"role": "assistant", "content": respuesta_ia})
                 
                 except Exception as e:
+                    error_message = f"Lo siento, tuve un problema al procesar tu solicitud: {e}"
                     st.error(f"Error al invocar la cadena de IA: {e}", icon="🚨")
-                    st.session_state.messages.append({"role": "assistant", "content": f"Lo siento, tuve un problema al procesar tu solicitud: {e}"})
+                    st.session_state.messages.append({"role": "assistant", "content": error_message})
 
+    # Dibuja el historial de chat existente en cada ejecución
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # --- LÓGICA DE BARRA DE ENTRADA CON DEPURACIÓN ---
-    prompt = st.chat_input("Escribe tu pregunta o usa el micrófono...", key="text_input")
-    
-    if prompt:
-        process_and_display_response(prompt)
+    # --- NUEVO BLOQUE: PROCESA EL PROMPT DE AUDIO SI EXISTE EN LA SESIÓN ---
+    # Esto se ejecuta después de transcribir y hacer st.rerun()
+    if "prompt_from_audio" in st.session_state and st.session_state.prompt_from_audio:
+        prompt_de_audio = st.session_state.prompt_from_audio
+        # Limpia la variable de sesión para que no se vuelva a procesar en el siguiente ciclo
+        st.session_state.prompt_from_audio = None 
+        # Llama a la función principal para procesar la respuesta
+        process_and_display_response(prompt_de_audio)
+        # Forzamos un rerun final para asegurar que el historial se redibuje correctamente con la nueva respuesta
         st.rerun()
 
+    # --- ENTRADA DE TEXTO Y AUDIO ---
+
+    # La entrada de texto funciona como siempre
+    if prompt_texto := st.chat_input("Escribe tu pregunta o usa el micrófono..."):
+        process_and_display_response(prompt_texto)
+        st.rerun()
+
+    # La entrada de audio ahora usa session_state para comunicarse
     st.markdown('<div class="mic-button-container">', unsafe_allow_html=True)
-    st.info("🎙️ Esperando grabación... Por favor, haz clic, graba y detén la grabación.")
     audio_bytes = audio_recorder(
         text="",
         icon_size="2x",
         recording_color="#e84242",
-        neutral_color="#646464",
-        key="audio_recorder_debug" # Cambiamos la clave para resetear el estado
+        neutral_color="#646464"
     )
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- AQUÍ EMPIEZA LA DEPURACIÓN ---
     if audio_bytes:
-        st.success("✅ PASO 1/4: Audio recibido desde el navegador.")
-        st.info(f"Tamaño del audio: {len(audio_bytes)} bytes.")
-
-        # Intentamos reproducir el audio que recibimos para verificarlo
-        st.audio(audio_bytes, format='audio/wav')
-
-        st.info("⏳ PASO 2/4: Enviando audio para transcripción...")
-        transcribed_prompt = speech_to_text(stt_client, audio_bytes)
+        with st.spinner("Transcribiendo tu voz..."):
+            transcribed_prompt = speech_to_text(stt_client, audio_bytes)
         
         if transcribed_prompt:
-            st.success("✅ PASO 3/4: Transcripción recibida.")
-            st.info(f"Texto transcrito: '{transcribed_prompt}'")
-            
-            st.info("⏳ PASO 4/4: Intentando actualizar la caja de texto...")
-            st.components.v1.html(
-                f"""
-                <script>
-                var input = window.parent.document.querySelector("input[aria-label='Escribe tu pregunta o usa el micrófono...']");
-                if (input) {{
-                    input.value = `{transcribed_prompt.replace("`", "\\`")}`;
-                    input.dispatchEvent(new Event('input', {{ bubbles: true }}));
-
-                    const enterKeyEvent = new KeyboardEvent('keydown', {{
-                        key: 'Enter', code: 'Enter', keyCode: 13, which: 13,
-                        bubbles: true, cancelable: true,
-                    }});
-                    input.dispatchEvent(enterKeyEvent);
-                }}
-                </script>
-                """,
-                height=0,
-            )
-            st.success("✅ PASO 4/4: Script enviado al navegador.")
+            # Guarda el texto transcrito en el estado de la sesión y re-ejecuta el script
+            st.session_state.prompt_from_audio = transcribed_prompt
+            st.rerun()
         else:
-            st.warning("⚠️ FALLO EN EL PASO 3: La función de transcripción no devolvió texto.")
-    # --- FIN DE LA DEPURACIÓN ---
+            # Informa al usuario si la transcripción falla
+            st.toast("No pude entender lo que dijiste. Por favor, intenta de nuevo.", icon="🎙️")
+    
+    # --- FIN DE LÓGICA MODIFICADA ---
 
     st.divider()
     st.caption(f"Para más información, puedes visitar la [{CONFIG['WEBSITE_LINK_TEXT']}]({CONFIG['OFFICIAL_WEBSITE_URL']}).")
@@ -321,5 +312,6 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
+        # Este es un último recurso para capturar cualquier error no manejado
         st.error(f"Ha ocurrido un error inesperado en la aplicación: {e}", icon="💥")
         st.exception(e)
