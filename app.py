@@ -90,7 +90,7 @@ LANG_CONFIG = {
 }
 DEFAULT_LANG = "es"
 
-# --- FUNCIONES DE LÓGICA (Sin cambios)---
+# --- FUNCIONES DE LÓGICA ---
 
 @st.cache_data
 def load_local_css(file_name):
@@ -204,7 +204,7 @@ def main():
     retriever, llm = initialize_rag_components()
 
     if not all([tts_client, stt_client, retriever, llm]):
-        st.error("La aplicación no puede continuar debido a un error de inicialización.", icon="🛑")
+        st.error("La aplicación no puede continuar debido a un error de inicialización. Revisa los mensajes anteriores.", icon="🛑")
         st.stop()
         
     with st.container():
@@ -215,11 +215,8 @@ def main():
     st.title(CONFIG["APP_TITLE"])
     st.write(CONFIG["APP_SUBHEADER"])
     
-    # --- INICIALIZACIÓN DE ESTADO DE SESIÓN ---
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": CONFIG["WELCOME_MESSAGE"]}]
-    if "current_prompt" not in st.session_state:
-        st.session_state.current_prompt = ""
 
     def process_and_display_response(prompt: str):
         st.session_state.messages.append({"role": "user", "content": prompt})
@@ -244,59 +241,78 @@ def main():
                 try:
                     response = rag_chain.invoke({"input": prompt})
                     respuesta_ia = response["answer"]
+                    
                     st.markdown(respuesta_ia)
                     audio_content = text_to_speech(tts_client, respuesta_ia, tts_voice_params)
                     if audio_content:
                         st.audio(audio_content, autoplay=True)
+                    
                     st.session_state.messages.append({"role": "assistant", "content": respuesta_ia})
+                
                 except Exception as e:
                     st.error(f"Error al invocar la cadena de IA: {e}", icon="🚨")
+                    st.session_state.messages.append({"role": "assistant", "content": f"Lo siento, tuve un problema al procesar tu solicitud: {e}"})
 
-    # --- DIBUJAR HISTORIAL DEL CHAT ---
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # --- NUEVA BARRA DE ENTRADA NATIVA ---
-    # Usamos un contenedor anclado al fondo para la barra de entrada
-    input_container = st.container()
-    with input_container:
-        # Dividimos el espacio en columnas para alinear los elementos
-        col1, col2, col3 = st.columns([7, 1, 1])
+    # --- LÓGICA DE BARRA DE ENTRADA CON DEPURACIÓN ---
+    prompt = st.chat_input("Escribe tu pregunta o usa el micrófono...", key="text_input")
+    
+    if prompt:
+        process_and_display_response(prompt)
+        st.rerun()
 
-        with col1:
-            # El área de texto ahora es controlada por el estado de la sesión
-            prompt_text = st.text_area(
-                "Escribe tu pregunta o usa el micrófono...",
-                key="text_area_input",
-                value=st.session_state.current_prompt,
-                #height=50
+    st.markdown('<div class="mic-button-container">', unsafe_allow_html=True)
+    st.info("🎙️ Esperando grabación... Por favor, haz clic, graba y detén la grabación.")
+    audio_bytes = audio_recorder(
+        text="",
+        icon_size="2x",
+        recording_color="#e84242",
+        neutral_color="#646464",
+        key="audio_recorder_debug" # Cambiamos la clave para resetear el estado
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # --- AQUÍ EMPIEZA LA DEPURACIÓN ---
+    if audio_bytes:
+        st.success("✅ PASO 1/4: Audio recibido desde el navegador.")
+        st.info(f"Tamaño del audio: {len(audio_bytes)} bytes.")
+
+        # Intentamos reproducir el audio que recibimos para verificarlo
+        st.audio(audio_bytes, format='audio/wav')
+
+        st.info("⏳ PASO 2/4: Enviando audio para transcripción...")
+        transcribed_prompt = speech_to_text(stt_client, audio_bytes)
+        
+        if transcribed_prompt:
+            st.success("✅ PASO 3/4: Transcripción recibida.")
+            st.info(f"Texto transcrito: '{transcribed_prompt}'")
+            
+            st.info("⏳ PASO 4/4: Intentando actualizar la caja de texto...")
+            st.components.v1.html(
+                f"""
+                <script>
+                var input = window.parent.document.querySelector("input[aria-label='Escribe tu pregunta o usa el micrófono...']");
+                if (input) {{
+                    input.value = `{transcribed_prompt.replace("`", "\\`")}`;
+                    input.dispatchEvent(new Event('input', {{ bubbles: true }}));
+
+                    const enterKeyEvent = new KeyboardEvent('keydown', {{
+                        key: 'Enter', code: 'Enter', keyCode: 13, which: 13,
+                        bubbles: true, cancelable: true,
+                    }});
+                    input.dispatchEvent(enterKeyEvent);
+                }}
+                </script>
+                """,
+                height=0,
             )
-
-        with col2:
-             # Botón para enviar el texto del área de texto
-            if st.button("Enviar", key="send_button", use_container_width=True):
-                if prompt_text:
-                    st.session_state.current_prompt = "" # Limpiar el prompt
-                    process_and_display_response(prompt_text)
-                    st.rerun()
-
-        with col3:
-            # Botón para grabar audio
-            audio_bytes = audio_recorder(
-                text="",
-                icon_size="1.5x", # Ajustamos el tamaño
-                recording_color="#e84242",
-                neutral_color="#646464",
-                key="audio_recorder_final"
-            )
-            if audio_bytes:
-                # Cuando se recibe audio, se transcribe
-                transcribed_prompt = speech_to_text(stt_client, audio_bytes)
-                if transcribed_prompt:
-                    # Y se actualiza el estado de la sesión, lo que llenará el área de texto
-                    st.session_state.current_prompt = transcribed_prompt
-                    st.rerun()
+            st.success("✅ PASO 4/4: Script enviado al navegador.")
+        else:
+            st.warning("⚠️ FALLO EN EL PASO 3: La función de transcripción no devolvió texto.")
+    # --- FIN DE LA DEPURACIÓN ---
 
     st.divider()
     st.caption(f"Para más información, puedes visitar la [{CONFIG['WEBSITE_LINK_TEXT']}]({CONFIG['OFFICIAL_WEBSITE_URL']}).")
