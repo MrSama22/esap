@@ -38,10 +38,10 @@ from audio_recorder_streamlit import audio_recorder
 CONFIG = {
     "PAGE_TITLE": "Asistente CSDB",
     "PAGE_ICON": "🎓",
-    "HEADER_IMAGE": "logo1.png",
+    "HEADER_IMAGE": "logo3.png",
     "APP_TITLE": "🎓 Asistente Virtual del Colegio Santo Domingo BIilingüe",
     "APP_SUBHEADER": "¡Hola! Estoy aquí para responder tus preguntas basándome en el documento oficial.",
-    "WELCOME_MESSAGE": "¡Hola! Soy el asistente virtual del CSD. ¿En qué puedo ayudarte? / Hello! I'm the CSDB virtual assistant. How can I help you?",
+    "WELCOME_MESSAGE": "¡Hola! Soy el asistente virtual del CSDB. ¿En qué puedo ayudarte? / Hello! I'm the CSDB virtual assistant. How can I help you?",
     "SPINNER_MESSAGE": "Generando respuesta...", # Mensaje de spinner más específico
     "PDF_DOCUMENT_PATH": "documento.pdf",
     "OFFICIAL_WEBSITE_URL": "https://colegiosantodomingo.edu.co/",
