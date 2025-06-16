@@ -169,12 +169,18 @@ def speech_to_text(client, audio_bytes):
     if not client or not audio_bytes: return None
     try:
         audio = speech.RecognitionAudio(content=audio_bytes)
+        
+        # --- CORRECCIÓN AQUÍ ---
+        # En lugar de usar 'language_codes' como una lista, especificamos un idioma
+        # principal y los alternativos para la detección.
         config = speech.RecognitionConfig(
             encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
             sample_rate_hertz=16000,
-            language_codes=["es-CO", "en-US"],
+            language_code="es-CO",  # Idioma principal esperado
+            alternative_language_codes=["en-US"], # Otros idiomas a detectar
             enable_automatic_punctuation=True
         )
+        # --- FIN DE LA CORRECCIÓN ---
         
         with st.spinner("Transcribiendo tu voz..."):
             response = client.recognize(config=config, audio=audio)
@@ -186,9 +192,10 @@ def speech_to_text(client, audio_bytes):
             return None
             
     except Exception as e:
+        # El mensaje de error ahora será más preciso si ocurre un problema de configuración.
         st.error(f"Error al transcribir el audio (Speech-to-Text): {e}", icon="🚨")
         return None
-
+        
 # --- LÓGICA PRINCIPAL DE LA APP ---
 
 def main():
