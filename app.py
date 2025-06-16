@@ -15,7 +15,6 @@ from dotenv import load_dotenv
 
 # --- LIBRERÍAS REQUERIDAS ---
 from google.cloud import texttospeech
-# --- NUEVO: Importación para Speech-to-Text ---
 from google.cloud import speech
 from google.oauth2 import service_account
 from google.api_core import exceptions as google_exceptions
@@ -27,15 +26,11 @@ from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 from langdetect import detect, LangDetectException
-
-# --- NUEVO: Importación del componente de grabadora de audio ---
 from st_audiorec import st_audiorec
-
-# --- NUEVOS IMPORTS PARA EL RETRIEVER DE COMPRESIÓN ---
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
 
-# --- CONFIGURACIÓN (sin cambios) ---
+# --- CONFIGURACIÓN ---
 CONFIG = {
     "PAGE_TITLE": "Asistente CSDB",
     "PAGE_ICON": "🎓",
@@ -50,7 +45,7 @@ CONFIG = {
     "CSS_FILE_PATH": "styles.css"
 }
 
-# --- CONFIGURACIÓN MULTILINGÜE (sin cambios) ---
+# --- CONFIGURACIÓN MULTILINGÜE ---
 LANG_CONFIG = {
     "es": {
         "tts_voice": {"language_code": "es-US", "name": "es-US-Standard-B"},
@@ -100,14 +95,12 @@ def load_local_css(file_name):
             st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 load_local_css(CONFIG["CSS_FILE_PATH"])
 
-# --- MODIFICADO: La función ahora verifica y devuelve ambos clientes (TTS y STT) ---
 @st.cache_resource
 def verify_credentials_and_get_clients():
     try:
         creds_dict = dict(st.secrets['gcp_service_account'])
         credentials = service_account.Credentials.from_service_account_info(creds_dict)
         tts_client = texttospeech.TextToSpeechClient(credentials=credentials)
-        # --- NUEVO: Inicializar el cliente de Speech-to-Text ---
         stt_client = speech.SpeechClient(credentials=credentials)
         return tts_client, stt_client
     except Exception as e:
@@ -124,7 +117,6 @@ with st.container():
 st.title(CONFIG["APP_TITLE"])
 st.write(CONFIG["APP_SUBHEADER"])
 
-# --- Función TTS (sin cambios) ---
 def text_to_speech(client, text, voice_params):
     if not client: return None
     try:
@@ -140,19 +132,16 @@ def text_to_speech(client, text, voice_params):
         st.error(f"Error al generar el audio: {e}", icon="🚨")
         return None
 
-# --- NUEVO: Función para convertir voz a texto ---
 def speech_to_text(client, audio_bytes):
     if not client or not audio_bytes:
         return None
     
     try:
         audio = speech.RecognitionAudio(content=audio_bytes)
-        # Configuración para reconocer tanto español de Colombia como inglés de EE. UU.
-        # La API detectará automáticamente cuál se está hablando.
         config = speech.RecognitionConfig(
             encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-            sample_rate_hertz=16000, # st-audiorec por defecto usa esta frecuencia de muestreo
-            language_codes=["es-CO", "en-US"], # ¡Importante para el bilingüismo!
+            sample_rate_hertz=16000,
+            language_codes=["es-CO", "en-US"],
             enable_automatic_punctuation=True
         )
         
@@ -168,7 +157,6 @@ def speech_to_text(client, audio_bytes):
     except Exception as e:
         st.error(f"Error al transcribir el audio: {e}", icon="🚨")
         return None
-
 
 @st.cache_resource
 def initialize_rag_components():
@@ -208,20 +196,19 @@ except Exception as e:
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": CONFIG["WELCOME_MESSAGE"]}]
 
-# --- MODIFICADO: Lógica de procesamiento refactorizada en una función ---
+if "is_recording" not in st.session_state:
+    st.session_state.is_recording = False
+
 def process_and_display_response(prompt: str):
-    # Añadir el mensaje del usuario al historial y mostrarlo en la UI
     st.session_state.messages.append({"role": "user", "content": prompt})
     with chat_container:
         with st.chat_message("user"):
             st.markdown(prompt)
 
-    # Procesar la respuesta del asistente
     with chat_container:
         with st.chat_message("assistant"):
             with st.spinner(CONFIG["SPINNER_MESSAGE"]):
                 try:
-                    # Detección de idioma y configuración
                     lang_code = detect(prompt)
                     if lang_code not in LANG_CONFIG:
                         lang_code = DEFAULT_LANG
@@ -232,7 +219,6 @@ def process_and_display_response(prompt: str):
                 prompt_template_str = selected_lang_config["prompt_template"]
                 tts_voice_params = selected_lang_config["tts_voice"]
 
-                # Creación y ejecución de la cadena RAG
                 prompt_obj = ChatPromptTemplate.from_template(prompt_template_str)
                 document_chain = create_stuff_documents_chain(llm, prompt_obj)
                 rag_chain = create_retrieval_chain(retriever, document_chain)
@@ -240,13 +226,11 @@ def process_and_display_response(prompt: str):
                 response = rag_chain.invoke({"input": prompt})
                 respuesta_ia = response["answer"]
                 
-                # Mostrar respuesta y generar audio
                 st.markdown(respuesta_ia)
                 audio_content = text_to_speech(tts_client, respuesta_ia, tts_voice_params)
                 if audio_content:
                     st.audio(audio_content, autoplay=True)
                 
-                # Añadir la respuesta del asistente al historial
                 st.session_state.messages.append({"role": "assistant", "content": respuesta_ia})
 
 # --- DIBUJAR LA INTERFAZ DEL CHAT ---
@@ -256,27 +240,35 @@ with chat_container:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-# --- MODIFICADO: Aceptar tanto entrada de voz como de texto ---
-st.write("👇 **Habla** con el asistente o **escribe** tu pregunta abajo")
+# --- BARRA DE ENTRADA UNIFICADA ---
+input_container = st.container()
 
-col1, col2 = st.columns([1, 6]) # Columna para el botón de voz
+with input_container:
+    if not st.session_state.is_recording:
+        col1, col2 = st.columns([7, 1])
+        
+        with col1:
+            prompt = st.text_input("Escribe tu pregunta o usa el micrófono...", key="text_input", label_visibility="collapsed")
+            if prompt:
+                process_and_display_response(prompt)
+                st.rerun()
 
-with col1:
-    # --- NUEVO: Componente de grabadora de voz ---
-    # `key` es importante para que Streamlit maneje el estado correctamente
-    audio_bytes = st_audiorec()#key="audio_recorder"
-
-# Si se grabó audio, transcríbelo y procesa la pregunta
-if audio_bytes:
-    transcribed_prompt = speech_to_text(stt_client, audio_bytes)
-    if transcribed_prompt:
-        process_and_display_response(transcribed_prompt)
-
-# Campo de texto para la entrada tradicional
-text_prompt = st.chat_input("Escribe tu pregunta aquí... / Type your question here...")
-if text_prompt:
-    process_and_display_response(text_prompt)
-
+        with col2:
+            if st.button("🎤", key="mic_button"):
+                st.session_state.is_recording = True
+                st.rerun()
+    else:
+        st.info("Grabando tu voz... Haz clic en el icono de stop al terminar.")
+        audio_bytes = st_audiorec()
+        
+        if audio_bytes:
+            st.session_state.is_recording = False
+            
+            transcribed_prompt = speech_to_text(stt_client, audio_bytes)
+            if transcribed_prompt:
+                process_and_display_response(transcribed_prompt)
+            
+            st.rerun()
 
 # --- ENLACE FINAL ---
 st.divider()
