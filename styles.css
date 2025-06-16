@@ -1,14 +1,11 @@
 /* --- Estilos Generales del Contenedor --- */
-/* Afecta el padding principal de la página */
 .block-container {
     padding-top: 2rem;
     padding-left: 5rem;
     padding-right: 5rem;
-    /* El padding-bottom se define más abajo para la barra fija */
 }
 
 /* --- Ocultar Elementos de Streamlit --- */
-/* Oculta el menú de hamburguesa y el pie de página de Streamlit */
 #MainMenu, footer, header {
     visibility: hidden;
 }
@@ -16,7 +13,6 @@
 /* --- Contenedor del Header --- */
 .header-container {
     padding: 0 !important;
-    /* Margen negativo para que la imagen del header se pegue a los bordes */
     margin: -2rem -5rem 2rem -5rem;
 }
 
@@ -27,21 +23,65 @@
     left: 0;
     right: 0;
     width: 100%;
-    background-color: #0E1117; /* Color oscuro de Streamlit */
-    padding: 1rem 1rem 0.5rem 1rem;
+    background-color: #0E1117;
+    padding: 1rem;
     border-top: 1px solid #262730;
     z-index: 999;
 }
 
 /* Añade espacio en la parte inferior para que el contenido no quede oculto */
 .main .block-container {
-    padding-bottom: 12rem;
+    padding-bottom: 15rem; /* Aumentamos el padding para dar espacio al nuevo input */
 }
 
-/* Ajustes para botones en la barra de chat */
-div[data-testid="stHorizontalBlock"] button {
-    height: 100%;
-    width: 100%;
+/* --- NUEVOS ESTILOS PARA INPUT PERSONALIZADO --- */
+
+/* Estilo para el área de texto */
+.fixed-chat-container textarea {
+    background-color: #262730;
+    color: white;
+    border: 1px solid #4d4d4d;
+    border-radius: 8px;
+    padding: 10px;
+}
+
+/* Contenedor para la fila de botones */
+.button-row {
+    display: flex;
+    justify-content: flex-end; /* Alinea los botones a la derecha */
+    align-items: center;
+    margin-top: 0.5rem; /* Espacio entre el textarea y los botones */
+}
+
+/* Estilo base para los botones circulares */
+.fixed-chat-container .stButton button, 
+.fixed-chat-container div[data-testid="stAudioRecorder"] button {
+    border: 1px solid #4d4d4d;
+    background-color: #262730;
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    margin-left: 0.5rem; /* Espacio entre los botones */
+}
+.fixed-chat-container .stButton button:hover,
+.fixed-chat-container div[data-testid="stAudioRecorder"] button:hover {
+    background-color: #4d4d4d;
+    border-color: #8c8c8c;
+}
+
+/* Cambia el color del ícono del micrófono a blanco */
+.fixed-chat-container div[data-testid="stAudioRecorder"] button svg {
+    fill: white;
+}
+
+/* Estilo para el ícono de enviar (flecha) */
+.fixed-chat-container .stButton button p {
+    font-size: 24px;
+    margin-bottom: 4px; /* Ajuste vertical de la flecha */
 }
 
 
@@ -49,16 +89,13 @@ div[data-testid="stHorizontalBlock"] button {
 .footer-link {
     text-align: center;
 }
-
 .footer-link a {
     text-decoration: none;
-    color: #004a80; /* Un color azul oscuro corporativo */
+    color: #004a80;
     font-weight: bold;
-    font-size: 1.1rem; /* Un poco más grande para que destaque */
+    font-size: 1.1rem;
 }
-
-/* Estilo para cuando el mouse pasa por encima del enlace */
 .footer-link a:hover {
     text-decoration: underline;
-    color: #1032cc; /* Un color azul más brillante para el hover */
+    color: #1032cc;
 }
