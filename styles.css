@@ -1,79 +1,84 @@
 /* --- Estilos Generales del Contenedor --- */
-
 /* Afecta el padding principal de la página */
-
 .block-container {
-
-    padding-top: 2rem;
-
-    padding-bottom: 2rem;
-
-    padding-left: 5rem;
-
-    padding-right: 5rem;
-
+    padding-top: 2rem;
+    padding-bottom: 6rem; /* Aumentado para dejar espacio para el input fijo */
+    padding-left: 5rem;
+    padding-right: 5rem;
 }
-
-
 
 /* --- Ocultar Elementos de Streamlit --- */
-
 /* Oculta el menú de hamburguesa y el pie de página de Streamlit */
-
 #MainMenu, footer, header {
-
-    visibility: hidden;
-
+    visibility: hidden;
 }
-
-
 
 /* --- Contenedor del Header --- */
-
 .header-container {
-
-    padding: 0 !important;
-
-    /* Margen negativo para que la imagen del header se pegue a los bordes */
-
-    margin: -2rem -5rem 2rem -5rem;
-
+    padding: 0 !important;
+    /* Margen negativo para que la imagen del header se pegue a los bordes */
+    margin: -2rem -5rem 2rem -5rem;
 }
-
-
-
-
 
 /* --- Estilos para el enlace del pie de página --- */
-
 .footer-link {
-
-    text-align: center;
-
+    text-align: center;
 }
-
-
 
 .footer-link a {
+    text-decoration: none;
+    color: #004a80; /* Un color azul oscuro corporativo */
+    font-weight: bold;
+    font-size: 1.1rem; /* Un poco más grande para que destaque */
+}
 
-    text-decoration: none;
-
-    color: #004a80; /* Un color azul oscuro corporativo */
-
-    font-weight: bold;
-
-    font-size: 1.1rem; /* Un poco más grande para que destaque */
-
+/* Estilo para cuando el mouse pasa por encima del enlace */
+.footer-link a:hover {
+    text-decoration: underline;
+    color: #1032cc; /* Un color rojo para el hover */
 }
 
 
+/* --- NUEVOS ESTILOS PARA LA BARRA DE INPUT FIJA --- */
 
-/* Estilo para cuando el mouse pasa por encima del enlace */
+.input-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    
+    position: fixed; /* Fija el contenedor en la parte inferior */
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    
+    background-color: #ffffff; /* Fondo blanco */
+    padding: 1rem 5rem 1rem 5rem; /* Padding: arriba, izq/der, abajo */
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08); /* Sombra superior sutil */
+    box-sizing: border-box; /* Asegura que el padding se incluya en el ancho/alto total */
+}
 
-.footer-link a:hover {
+/* Ajusta el contenedor de la columna del grabador de audio */
+div[data-testid="stHorizontalBlock"] > div:nth-child(2) > div[data-testid="stVerticalBlock"] {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 48px; /* Altura fija para alinear con el input */
+}
 
-    text-decoration: underline;
+/* Ajusta el campo de texto */
+div[data-testid="stTextInput"] > div > div > input {
+    height: 3rem; /* 48px */
+    border-radius: 0.5rem;
+    border: 1px solid #ccc;
+    padding-left: 1rem;
+}
 
-    color: #1032cc; /* Un color rojo para el hover */
+/* Ocultar el label del text_input, ya que usamos collapsed */
+div[data-testid="stTextInput"] label {
+    display: none;
+}
 
+/* Para que las columnas dentro del input-container se comporten como esperamos */
+.input-container div[data-testid="stHorizontalBlock"] {
+    align-items: center;
 }
