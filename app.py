@@ -160,7 +160,7 @@ def text_to_speech(client, text, voice_params):
         response = client.synthesize_speech(input=synthesis_input, voice=voice, audio_config=audio_config)
         return response.audio_content
     except Exception as e:
-        st.error(f"Error al generar el audio (Text-to-Speech): {e}", icon="🚨")
+        st.error(f"Error en la API de Text-to-Speech: {e}", icon="🚨")
         return None
 
 def speech_to_text(client, audio_bytes):
@@ -176,13 +176,11 @@ def speech_to_text(client, audio_bytes):
         mono_audio_bytes = mono_audio_bytes_io.getvalue()
         
         audio = speech.RecognitionAudio(content=mono_audio_bytes)
-
         config = speech.RecognitionConfig(
             language_code="es-CO",
             alternative_language_codes=["en-US"],
             enable_automatic_punctuation=True
         )
-        
         response = client.recognize(config=config, audio=audio)
         
         if response.results and response.results[0].alternatives:
@@ -196,14 +194,13 @@ def speech_to_text(client, audio_bytes):
         
 def main():
     st.set_page_config(page_title=CONFIG["PAGE_TITLE"], page_icon=CONFIG["PAGE_ICON"], layout="wide")
-    
     load_local_css(CONFIG["CSS_FILE_PATH"])
 
     tts_client, stt_client = verify_credentials_and_get_clients()
     retriever, llm = initialize_rag_components()
 
     if not all([tts_client, stt_client, retriever, llm]):
-        st.error("La aplicación no puede continuar debido a un error de inicialización. Revisa los mensajes anteriores.", icon="🛑")
+        st.error("La aplicación no puede continuar debido a un error de inicialización.", icon="🛑")
         st.stop()
         
     with st.container():
@@ -217,11 +214,13 @@ def main():
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": CONFIG["WELCOME_MESSAGE"]}]
 
+    # --- FUNCIÓN DE PROCESAMIENTO MEJORADA ---
     def process_and_display_response(prompt: str):
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         with st.chat_message("assistant"):
             with st.spinner(CONFIG["SPINNER_MESSAGE"]):
+                respuesta_ia = ""
                 try:
                     lang_code = detect(prompt)
                     if lang_code not in LANG_CONFIG:
@@ -239,21 +238,31 @@ def main():
 
                 try:
                     response = rag_chain.invoke({"input": prompt})
-                    respuesta_ia = response["answer"]
-                    
-                    st.markdown(respuesta_ia)
-                    audio_content = text_to_speech(tts_client, respuesta_ia, tts_voice_params)
-                    if audio_content:
-                        st.audio(audio_content, format='audio/mp3', autoplay=True)
-                    
-                    st.session_state.messages.append({"role": "assistant", "content": respuesta_ia})
-                
+                    # Usar .get() para evitar errores si la clave "answer" no existe
+                    respuesta_ia = response.get("answer", "")
                 except Exception as e:
-                    error_message = f"Lo siento, tuve un problema al procesar tu solicitud: {e}"
-                    st.error(f"Error al invocar la cadena de IA: {e}", icon="🚨")
-                    st.session_state.messages.append({"role": "assistant", "content": error_message})
+                    respuesta_ia = f"Lo siento, tuve un problema al generar la respuesta: {e}"
+                    st.error(respuesta_ia, icon="🚨")
 
-    # Dibuja el historial de chat existente en cada ejecución
+            # --- LÓGICA DE VISUALIZACIÓN Y AUDIO "A PRUEBA DE BALAS" ---
+            st.markdown(respuesta_ia)
+            
+            # 1. Verificar que la respuesta de texto no esté vacía antes de generar audio
+            if respuesta_ia and respuesta_ia.strip():
+                audio_content = text_to_speech(tts_client, respuesta_ia, tts_voice_params)
+                
+                # 2. Verificar que la API de TTS realmente devolvió audio
+                if audio_content:
+                    # 3. Mostrar el reproductor SIN autoplay para máxima compatibilidad
+                    st.audio(audio_content, format='audio/mp3')
+                else:
+                    # 4. Informar al usuario si la generación de audio falló
+                    st.warning("No se pudo generar el audio para esta respuesta.", icon="🔇")
+            
+            # Guardar el mensaje de texto de la IA en el historial
+            st.session_state.messages.append({"role": "assistant", "content": respuesta_ia})
+
+    # Dibuja el historial de chat existente
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
@@ -262,7 +271,6 @@ def main():
     if "prompt_from_audio" in st.session_state and st.session_state.prompt_from_audio:
         prompt_de_audio = st.session_state.prompt_from_audio
         st.session_state.prompt_from_audio = None 
-        
         process_and_display_response(prompt_de_audio)
         st.rerun()
 
@@ -287,7 +295,6 @@ def main():
         
         if transcribed_prompt:
             st.session_state.prompt_from_audio = transcribed_prompt
-            # Re-ejecuta para que el bloque de arriba procese el audio
             st.rerun()
         else:
             st.toast("No pude entender lo que dijiste. Por favor, intenta de nuevo.", icon="🎙️")
