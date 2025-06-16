@@ -22,13 +22,13 @@ from google.cloud import texttospeech
 from google.cloud import speech
 from google.oauth2 import service_account
 from google.api_core import exceptions as google_exceptions
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import PromptTemplate
 from langdetect import detect, LangDetectException
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
@@ -246,7 +246,7 @@ def main():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
             if message.get("audio"):
-                st.audio(message["audio"], format='audio/mp3')
+                st.audio(message["audio"], format='audio/mp3',autoplay=True)
 
     # 3. MANEJAR LAS ENTRADAS DEL USUARIO
     # Entrada de texto (sin cambios)
