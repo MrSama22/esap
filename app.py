@@ -22,13 +22,13 @@ from google.cloud import texttospeech
 from google.cloud import speech
 from google.oauth2 import service_account
 from google.api_core import exceptions as google_exceptions
-from langchain_google_genai import GoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.prompts import PromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from langdetect import detect, LangDetectException
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
@@ -40,7 +40,7 @@ CONFIG = {
     "PAGE_ICON": "🎓",
     "HEADER_IMAGE": "logo1.png",
     "APP_TITLE": "🎓 Asistente Virtual del Colegio Santo Domingo BIilingüe",
-    "APP_SUBHEADER": "¡Hola! Estoy aquí para responder tus preguntas basándome en el documento oficial.",
+    "APP_SUBHEADER": "¡Hola! Estoy aquí para responder tus preguntas basándándome en el documento oficial.",
     "WELCOME_MESSAGE": "¡Hola! Soy el asistente virtual del CSD. ¿En qué puedo ayudarte? / Hello! I'm the CSDB virtual assistant. How can I help you?",
     "SPINNER_MESSAGE": "Buscando y preparando tu respuesta...",
     "PDF_DOCUMENT_PATH": "documento.pdf",
@@ -221,14 +221,8 @@ def main():
             "audio": None
         }]
 
-    # --- INICIO DE LA LÓGICA CORREGIDA PARA EVITAR BUCLES ---
-
-    # 1. PROCESAR EL AUDIO PENDIENTE (SI LO HAY)
-    # Este bloque revisa el "buzón" de audio al inicio de cada ejecución.
     if "audio_to_process" in st.session_state and st.session_state.audio_to_process:
         audio_bytes = st.session_state.audio_to_process
-        
-        # **LA LÍNEA MÁS IMPORTANTE**: Limpiamos el buzón para no volver a procesar.
         st.session_state.audio_to_process = None
         
         with st.spinner("Transcribiendo..."):
@@ -238,30 +232,24 @@ def main():
             handle_new_prompt(transcribed_prompt)
         else:
             st.toast("No pude entender lo que dijiste.", icon="🎙️")
-            st.rerun() # Hacemos rerun para limpiar el spinner y el toast
+            st.rerun()
 
-    # 2. RENDERIZAR EL CHAT
-    # Esta parte no cambia, solo dibuja lo que hay en el historial.
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
             if message.get("audio"):
-                st.audio(message["audio"], format='audio/mp3'  )
+                # --- LÍNEA MODIFICADA ---
+                # Se añade autoplay=True para que el audio se reproduzca automáticamente.
+                st.audio(message["audio"], format='audio/mp3', autoplay=True)
 
-    # 3. MANEJAR LAS ENTRADAS DEL USUARIO
-    # Entrada de texto (sin cambios)
     if prompt_texto := st.chat_input("Escribe tu pregunta o usa el micrófono..."):
         handle_new_prompt(prompt_texto)
 
-    # Entrada de audio (lógica simplificada)
-    # Ya no procesa directamente, solo guarda el audio en el "buzón".
     audio_bytes_grabados = audio_recorder(text="", icon_size="2x", recording_color="#e84242", neutral_color="#646464")
     if audio_bytes_grabados:
         st.session_state.audio_to_process = audio_bytes_grabados
-        st.rerun() # Forzamos un rerun para que el bloque de arriba lo procese.
+        st.rerun()
     
-    # --- FIN DE LA LÓGICA CORREGIDA ---
-
     st.divider()
     st.caption(f"Para más información, visita la [{CONFIG['WEBSITE_LINK_TEXT']}]({CONFIG['OFFICIAL_WEBSITE_URL']}).")
 
