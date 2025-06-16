@@ -262,7 +262,7 @@ def main():
         col1, col2, col3 = st.columns([8, 1, 1])
 
         with col1:
-            prompt_texto = st.text_area("Escribe tu pregunta...", key="chat_input_text", height=50, label_visibility="collapsed")
+            prompt_texto = st.text_area("Escribe tu pregunta...", key="chat_input_text", height=68, label_visibility="collapsed")
 
         with col2:
             # Colocamos el grabador de audio aquí
