@@ -171,13 +171,13 @@ def speech_to_text(client, audio_bytes):
         audio = speech.RecognitionAudio(content=audio_bytes)
         
         # --- CORRECCIÓN AQUÍ ---
-        # En lugar de usar 'language_codes' como una lista, especificamos un idioma
-        # principal y los alternativos para la detección.
+        # Hemos eliminado la línea "sample_rate_hertz=16000,".
+        # Esto permite a la API de Google detectar la tasa de muestreo 
+        # automáticamente desde el encabezado del archivo de audio.
         config = speech.RecognitionConfig(
             encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-            sample_rate_hertz=16000,
-            language_code="es-CO",  # Idioma principal esperado
-            alternative_language_codes=["en-US"], # Otros idiomas a detectar
+            language_code="es-CO",
+            alternative_language_codes=["en-US"],
             enable_automatic_punctuation=True
         )
         # --- FIN DE LA CORRECCIÓN ---
@@ -192,7 +192,6 @@ def speech_to_text(client, audio_bytes):
             return None
             
     except Exception as e:
-        # El mensaje de error ahora será más preciso si ocurre un problema de configuración.
         st.error(f"Error al transcribir el audio (Speech-to-Text): {e}", icon="🚨")
         return None
         
