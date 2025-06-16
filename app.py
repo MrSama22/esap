@@ -33,6 +33,8 @@ from langdetect import detect, LangDetectException
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
 from audio_recorder_streamlit import audio_recorder
+st.set_page_config(page_title=CONFIG["PAGE_TITLE"], page_icon=CONFIG["PAGE_ICON"], layout="wide")
+
 
 # --- CONFIGURACIÓN ---
 CONFIG = {
@@ -164,7 +166,6 @@ def speech_to_text(client, audio_bytes):
         return None
 
 def main():
-    st.set_page_config(page_title=CONFIG["PAGE_TITLE"], page_icon=CONFIG["PAGE_ICON"], layout="wide")
     load_local_css(CONFIG["CSS_FILE_PATH"])
 
     # --- INICIALIZACIÓN ---
