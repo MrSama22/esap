@@ -33,8 +33,6 @@ from langdetect import detect, LangDetectException
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
 from audio_recorder_streamlit import audio_recorder
-st.set_page_config(page_title=CONFIG["PAGE_TITLE"], page_icon=CONFIG["PAGE_ICON"], layout="wide")
-
 
 # --- CONFIGURACIÓN ---
 CONFIG = {
@@ -166,6 +164,7 @@ def speech_to_text(client, audio_bytes):
         return None
 
 def main():
+    st.set_page_config(page_title=CONFIG["PAGE_TITLE"], page_icon=CONFIG["PAGE_ICON"], layout="wide")
     load_local_css(CONFIG["CSS_FILE_PATH"])
 
     # --- INICIALIZACIÓN ---
@@ -241,41 +240,26 @@ def main():
 
     # --- MANEJO DE ENTRADAS DEL USUARIO ---
     # Entrada de texto: solo añade el prompt al historial y marca que debe ser procesado.
-    # --- MANEJO DE ENTRADAS DEL USUARIO ---
-with st.container():
-    col1, col2 = st.columns([8, 1])  # Input + mic
-
-    with col1:
-        prompt_texto = st.chat_input("Escribe tu pregunta o usa el micrófono...")
-
-    with col2:
-        usar_microfono = st.button("🎤", use_container_width=True)
-
-    if prompt_texto:
+    if prompt_texto := st.chat_input("Escribe tu pregunta o usa el micrófono..."):
         st.session_state.messages.append({"role": "user", "content": prompt_texto})
         st.session_state.prompt_to_process = prompt_texto
         st.rerun()
 
-    if usar_microfono:
-        st.session_state["esperando_audio"] = True
-        st.rerun()
-
-# Subida de archivo tras presionar micrófono
-if st.session_state.get("esperando_audio", False):
-    st.info("Graba tu audio y súbelo como archivo .wav o .mp3 para transcribirlo.")
-    archivo_audio = st.file_uploader("Sube tu audio", type=["wav", "mp3"])
-
-    if archivo_audio:
-        audio_bytes = archivo_audio.read()
-        with st.spinner("Transcribiendo audio..."):
-            texto = speech_to_text(stt_client, audio_bytes)
-        if texto:
-            st.session_state.messages.append({"role": "user", "content": texto})
-            st.session_state.prompt_to_process = texto
-            st.session_state["esperando_audio"] = False
+    # Entrada de audio: transcribe, añade el prompt y marca para procesar.
+    audio_bytes_grabados = audio_recorder(text="", icon_size="2x", recording_color="#e84242", neutral_color="#646464")
+    if audio_bytes_grabados:
+        with st.spinner("Transcribiendo..."):
+            transcribed_prompt = speech_to_text(stt_client, audio_bytes_grabados)
+        
+        if transcribed_prompt:
+            st.session_state.messages.append({"role": "user", "content": transcribed_prompt})
+            st.session_state.prompt_to_process = transcribed_prompt
             st.rerun()
         else:
-            st.warning("No se pudo transcribir el audio.")
+            st.toast("No pude entender lo que dijiste.", icon="🎙️")
+    
+    st.divider()
+    st.caption(f"Para más información, visita la [{CONFIG['WEBSITE_LINK_TEXT']}]({CONFIG['OFFICIAL_WEBSITE_URL']}).")
 
 if __name__ == "__main__":
     try:
