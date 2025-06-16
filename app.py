@@ -168,7 +168,6 @@ def speech_to_text(client, audio_bytes):
         return None
 
     try:
-        # Convierte a mono para asegurar compatibilidad
         audio_segment = AudioSegment.from_file(io.BytesIO(audio_bytes))
         audio_segment = audio_segment.set_channels(1)
         
@@ -218,10 +217,7 @@ def main():
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": CONFIG["WELCOME_MESSAGE"]}]
 
-    # --- INICIO DE LÓGICA MODIFICADA ---
-
     def process_and_display_response(prompt: str):
-        # Añade el prompt del usuario al historial para que se muestre en la UI
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         with st.chat_message("assistant"):
@@ -248,9 +244,8 @@ def main():
                     st.markdown(respuesta_ia)
                     audio_content = text_to_speech(tts_client, respuesta_ia, tts_voice_params)
                     if audio_content:
-                        st.audio(audio_content, autoplay=True)
+                        st.audio(audio_content, format='audio/mp3', autoplay=True)
                     
-                    # Añade la respuesta del asistente al historial
                     st.session_state.messages.append({"role": "assistant", "content": respuesta_ia})
                 
                 except Exception as e:
@@ -263,25 +258,20 @@ def main():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # --- NUEVO BLOQUE: PROCESA EL PROMPT DE AUDIO SI EXISTE EN LA SESIÓN ---
-    # Esto se ejecuta después de transcribir y hacer st.rerun()
+    # Procesa el audio si existe en el estado de la sesión
     if "prompt_from_audio" in st.session_state and st.session_state.prompt_from_audio:
         prompt_de_audio = st.session_state.prompt_from_audio
-        # Limpia la variable de sesión para que no se vuelva a procesar en el siguiente ciclo
         st.session_state.prompt_from_audio = None 
-        # Llama a la función principal para procesar la respuesta
+        
         process_and_display_response(prompt_de_audio)
-        # Forzamos un rerun final para asegurar que el historial se redibuje correctamente con la nueva respuesta
         st.rerun()
 
-    # --- ENTRADA DE TEXTO Y AUDIO ---
-
-    # La entrada de texto funciona como siempre
+    # Entrada de texto del usuario
     if prompt_texto := st.chat_input("Escribe tu pregunta o usa el micrófono..."):
         process_and_display_response(prompt_texto)
         st.rerun()
 
-    # La entrada de audio ahora usa session_state para comunicarse
+    # Entrada de audio del usuario
     st.markdown('<div class="mic-button-container">', unsafe_allow_html=True)
     audio_bytes = audio_recorder(
         text="",
@@ -296,15 +286,12 @@ def main():
             transcribed_prompt = speech_to_text(stt_client, audio_bytes)
         
         if transcribed_prompt:
-            # Guarda el texto transcrito en el estado de la sesión y re-ejecuta el script
             st.session_state.prompt_from_audio = transcribed_prompt
+            # Re-ejecuta para que el bloque de arriba procese el audio
             st.rerun()
         else:
-            # Informa al usuario si la transcripción falla
             st.toast("No pude entender lo que dijiste. Por favor, intenta de nuevo.", icon="🎙️")
     
-    # --- FIN DE LÓGICA MODIFICADA ---
-
     st.divider()
     st.caption(f"Para más información, puedes visitar la [{CONFIG['WEBSITE_LINK_TEXT']}]({CONFIG['OFFICIAL_WEBSITE_URL']}).")
 
@@ -312,6 +299,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        # Este es un último recurso para capturar cualquier error no manejado
         st.error(f"Ha ocurrido un error inesperado en la aplicación: {e}", icon="💥")
         st.exception(e)
