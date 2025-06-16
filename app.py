@@ -42,7 +42,7 @@ CONFIG = {
     "APP_TITLE": "🎓 Asistente Virtual del Colegio Santo Domingo BIilingüe",
     "APP_SUBHEADER": "¡Hola! Estoy aquí para responder tus preguntas basándome en el documento oficial.",
     "WELCOME_MESSAGE": "¡Hola! Soy el asistente virtual del CSD. ¿En qué puedo ayudarte? / Hello! I'm the CSDB virtual assistant. How can I help you?",
-    "SPINNER_MESSAGE": "Generando respuesta...", # Mensaje de spinner más específico
+    "SPINNER_MESSAGE": "Generando respuesta...",
     "PDF_DOCUMENT_PATH": "documento.pdf",
     "OFFICIAL_WEBSITE_URL": "https://colegiosantodomingo.edu.co/",
     "WEBSITE_LINK_TEXT": "Visita la página web oficial",
@@ -190,28 +190,23 @@ def main():
         st.session_state.prompt_to_process = None
 
     # --- INTERFAZ GRÁFICA ---
-    with st.container():
-        st.markdown('<div class="header-container">', unsafe_allow_html=True)
-        if os.path.exists(CONFIG["HEADER_IMAGE"]):
-            st.image(CONFIG["HEADER_IMAGE"], use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div class="header-container">', unsafe_allow_html=True)
+    if os.path.exists(CONFIG["HEADER_IMAGE"]):
+        st.image(CONFIG["HEADER_IMAGE"], use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
     st.title(CONFIG["APP_TITLE"])
     st.write(CONFIG["APP_SUBHEADER"])
 
     # --- LÓGICA DE RENDERIZADO DEL CHAT ---
-    # 1. Dibuja todos los mensajes que ya han sido completados.
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
             if message.get("audio"):
                 st.audio(message["audio"], format='audio/mp3', autoplay=True)
 
-    # 2. Revisa si hay un nuevo prompt que necesite ser procesado.
     if prompt := st.session_state.get("prompt_to_process"):
-        # Muestra el placeholder del asistente con el spinner.
         with st.chat_message("assistant"):
             with st.spinner(CONFIG["SPINNER_MESSAGE"]):
-                # Lógica de negocio: procesa el prompt para obtener la respuesta.
                 try:
                     lang_code = detect(prompt)
                     if lang_code not in LANG_CONFIG: lang_code = DEFAULT_LANG
@@ -227,26 +222,66 @@ def main():
                 respuesta_ia = response.get("answer", "No pude encontrar una respuesta.")
                 audio_content = text_to_speech(tts_client, respuesta_ia, selected_lang_config["tts_voice"])
 
-                # Añade la respuesta final al historial de mensajes.
                 st.session_state.messages.append({
                     "role": "assistant",
                     "content": respuesta_ia,
                     "audio": audio_content
                 })
         
-        # Limpia el prompt pendiente y re-ejecuta para mostrar la respuesta final.
         st.session_state.prompt_to_process = None
         st.rerun()
 
-    # --- MANEJO DE ENTRADAS DEL USUARIO ---
-    # Entrada de texto: solo añade el prompt al historial y marca que debe ser procesado.
-    if prompt_texto := st.chat_input("Escribe tu pregunta o usa el micrófono..."):
-        st.session_state.messages.append({"role": "user", "content": prompt_texto})
-        st.session_state.prompt_to_process = prompt_texto
+    # --- NUEVO INPUT DE CHAT PERSONALIZADO Y FIJO ---
+    custom_css = """
+        <style>
+            .fixed-chat-container {
+                position: fixed;
+                bottom: 0px;
+                left: 0;
+                right: 0;
+                width: 100%;
+                background-color: #0E1117;
+                padding: 1rem 1rem 0.5rem 1rem;
+                border-top: 1px solid #262730;
+                z-index: 999;
+            }
+            .main .block-container {
+                padding-bottom: 12rem;
+            }
+            div[data-testid="stHorizontalBlock"] button {
+                height: 100%;
+                width: 100%;
+            }
+        </style>
+    """
+    st.markdown(custom_css, unsafe_allow_html=True)
+
+    with st.container():
+        st.markdown('<div class="fixed-chat-container">', unsafe_allow_html=True)
+        
+        col1, col2, col3 = st.columns([8, 1, 1])
+
+        with col1:
+            prompt_texto = st.text_area("Escribe tu pregunta...", key="chat_input_text", height=50, label_visibility="collapsed")
+
+        with col2:
+            # Colocamos el grabador de audio aquí
+            audio_bytes_grabados = audio_recorder(text="", icon_size="2x", key="audio_recorder_custom")
+
+        with col3:
+            send_button = st.button("➤", key="send_button")
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # --- LÓGICA PARA LOS NUEVOS INPUTS ---
+    # Si se hizo clic en el botón de enviar y hay texto
+    if send_button and st.session_state.chat_input_text.strip():
+        st.session_state.messages.append({"role": "user", "content": st.session_state.chat_input_text})
+        st.session_state.prompt_to_process = st.session_state.chat_input_text
+        st.session_state.chat_input_text = "" # Limpiar el cuadro de texto
         st.rerun()
 
-    # Entrada de audio: transcribe, añade el prompt y marca para procesar.
-    audio_bytes_grabados = audio_recorder(text="", icon_size="2x", recording_color="#e84242", neutral_color="#646464")
+    # Si se grabó un audio
     if audio_bytes_grabados:
         with st.spinner("Transcribiendo..."):
             transcribed_prompt = speech_to_text(stt_client, audio_bytes_grabados)
