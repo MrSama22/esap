@@ -168,18 +168,13 @@ def speech_to_text(client, audio_bytes):
         return None
 
     try:
-        # 1. Cargar los bytes del audio grabado en pydub
         audio_segment = AudioSegment.from_file(io.BytesIO(audio_bytes))
-
-        # 2. Forzar la conversión a un solo canal (mono)
         audio_segment = audio_segment.set_channels(1)
         
-        # 3. Exportar el audio modificado de vuelta a bytes en formato WAV
         mono_audio_bytes_io = io.BytesIO()
         audio_segment.export(mono_audio_bytes_io, format="wav")
         mono_audio_bytes = mono_audio_bytes_io.getvalue()
         
-        # 4. Usar los bytes del audio ya convertido para la transcripción
         audio = speech.RecognitionAudio(content=mono_audio_bytes)
 
         config = speech.RecognitionConfig(
@@ -194,7 +189,6 @@ def speech_to_text(client, audio_bytes):
         if response.results and response.results[0].alternatives:
             return response.results[0].alternatives[0].transcript
         else:
-            st.warning("No pude entender lo que dijiste. Por favor, intenta de nuevo.", icon="🤔")
             return None
             
     except Exception as e:
@@ -263,6 +257,7 @@ def main():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
+    # --- LÓGICA DE BARRA DE ENTRADA CON DEPURACIÓN ---
     prompt = st.chat_input("Escribe tu pregunta o usa el micrófono...", key="text_input")
     
     if prompt:
@@ -270,38 +265,54 @@ def main():
         st.rerun()
 
     st.markdown('<div class="mic-button-container">', unsafe_allow_html=True)
+    st.info("🎙️ Esperando grabación... Por favor, haz clic, graba y detén la grabación.")
     audio_bytes = audio_recorder(
         text="",
         icon_size="2x",
         recording_color="#e84242",
         neutral_color="#646464",
-        key="audio_recorder"
+        key="audio_recorder_debug" # Cambiamos la clave para resetear el estado
     )
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # --- AQUÍ EMPIEZA LA DEPURACIÓN ---
     if audio_bytes:
+        st.success("✅ PASO 1/4: Audio recibido desde el navegador.")
+        st.info(f"Tamaño del audio: {len(audio_bytes)} bytes.")
+
+        # Intentamos reproducir el audio que recibimos para verificarlo
+        st.audio(audio_bytes, format='audio/wav')
+
+        st.info("⏳ PASO 2/4: Enviando audio para transcripción...")
         transcribed_prompt = speech_to_text(stt_client, audio_bytes)
+        
         if transcribed_prompt:
+            st.success("✅ PASO 3/4: Transcripción recibida.")
+            st.info(f"Texto transcrito: '{transcribed_prompt}'")
+            
+            st.info("⏳ PASO 4/4: Intentando actualizar la caja de texto...")
             st.components.v1.html(
                 f"""
                 <script>
                 var input = window.parent.document.querySelector("input[aria-label='Escribe tu pregunta o usa el micrófono...']");
-                input.value = `{transcribed_prompt.replace("`", "\\`")}`;
-                input.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                if (input) {{
+                    input.value = `{transcribed_prompt.replace("`", "\\`")}`;
+                    input.dispatchEvent(new Event('input', {{ bubbles: true }}));
 
-                const enterKeyEvent = new KeyboardEvent('keydown', {{
-                    key: 'Enter',
-                    code: 'Enter',
-                    keyCode: 13,
-                    which: 13,
-                    bubbles: true,
-                    cancelable: true,
-                }});
-                input.dispatchEvent(enterKeyEvent);
+                    const enterKeyEvent = new KeyboardEvent('keydown', {{
+                        key: 'Enter', code: 'Enter', keyCode: 13, which: 13,
+                        bubbles: true, cancelable: true,
+                    }});
+                    input.dispatchEvent(enterKeyEvent);
+                }}
                 </script>
                 """,
                 height=0,
             )
+            st.success("✅ PASO 4/4: Script enviado al navegador.")
+        else:
+            st.warning("⚠️ FALLO EN EL PASO 3: La función de transcripción no devolvió texto.")
+    # --- FIN DE LA DEPURACIÓN ---
 
     st.divider()
     st.caption(f"Para más información, puedes visitar la [{CONFIG['WEBSITE_LINK_TEXT']}]({CONFIG['OFFICIAL_WEBSITE_URL']}).")
