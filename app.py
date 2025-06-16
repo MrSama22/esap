@@ -231,41 +231,17 @@ def main():
         st.session_state.prompt_to_process = None
         st.rerun()
 
-    # --- NUEVO INPUT DE CHAT PERSONALIZADO Y FIJO ---
-    custom_css = """
-        <style>
-            .fixed-chat-container {
-                position: fixed;
-                bottom: 0px;
-                left: 0;
-                right: 0;
-                width: 100%;
-                background-color: #0E1117;
-                padding: 1rem 1rem 0.5rem 1rem;
-                border-top: 1px solid #262730;
-                z-index: 999;
-            }
-            .main .block-container {
-                padding-bottom: 12rem;
-            }
-            div[data-testid="stHorizontalBlock"] button {
-                height: 100%;
-                width: 100%;
-            }
-        </style>
-    """
-    st.markdown(custom_css, unsafe_allow_html=True)
-
+    # --- INPUT DE CHAT PERSONALIZADO Y FIJO ---
+    # Ya no es necesario inyectar CSS aquí, se carga desde el archivo styles.css
     with st.container():
         st.markdown('<div class="fixed-chat-container">', unsafe_allow_html=True)
         
         col1, col2, col3 = st.columns([8, 1, 1])
 
         with col1:
-            prompt_texto = st.text_area("Escribe tu pregunta...", key="chat_input_text", height=68, label_visibility="collapsed")
+            prompt_texto = st.text_area("Escribe tu pregunta...", key="chat_input_text", height=50, label_visibility="collapsed")
 
         with col2:
-            # Colocamos el grabador de audio aquí
             audio_bytes_grabados = audio_recorder(text="", icon_size="2x", key="audio_recorder_custom")
 
         with col3:
@@ -274,14 +250,12 @@ def main():
         st.markdown('</div>', unsafe_allow_html=True)
 
     # --- LÓGICA PARA LOS NUEVOS INPUTS ---
-    # Si se hizo clic en el botón de enviar y hay texto
     if send_button and st.session_state.chat_input_text.strip():
         st.session_state.messages.append({"role": "user", "content": st.session_state.chat_input_text})
         st.session_state.prompt_to_process = st.session_state.chat_input_text
-        st.session_state.chat_input_text = "" # Limpiar el cuadro de texto
+        st.session_state.chat_input_text = ""
         st.rerun()
 
-    # Si se grabó un audio
     if audio_bytes_grabados:
         with st.spinner("Transcribiendo..."):
             transcribed_prompt = speech_to_text(stt_client, audio_bytes_grabados)
@@ -293,8 +267,15 @@ def main():
         else:
             st.toast("No pude entender lo que dijiste.", icon="🎙️")
     
+    # --- FOOTER CON ESTILO PERSONALIZADO ---
     st.divider()
-    st.caption(f"Para más información, visita la [{CONFIG['WEBSITE_LINK_TEXT']}]({CONFIG['OFFICIAL_WEBSITE_URL']}).")
+    footer_html = f"""
+    <div class="footer-link">
+        <a href="{CONFIG['OFFICIAL_WEBSITE_URL']}" target="_blank">{CONFIG['WEBSITE_LINK_TEXT']}</a>
+    </div>
+    """
+    st.markdown(footer_html, unsafe_allow_html=True)
+
 
 if __name__ == "__main__":
     try:
