@@ -2,9 +2,9 @@
 /* Afecta el padding principal de la página */
 .block-container {
     padding-top: 2rem;
-    padding-bottom: 2rem;
     padding-left: 5rem;
     padding-right: 5rem;
+    /* El padding-bottom se define más abajo para la barra fija */
 }
 
 /* --- Ocultar Elementos de Streamlit --- */
@@ -18,6 +18,30 @@
     padding: 0 !important;
     /* Margen negativo para que la imagen del header se pegue a los bordes */
     margin: -2rem -5rem 2rem -5rem;
+}
+
+/* --- Estilos para la Barra de Chat Fija --- */
+.fixed-chat-container {
+    position: fixed;
+    bottom: 0px;
+    left: 0;
+    right: 0;
+    width: 100%;
+    background-color: #0E1117; /* Color oscuro de Streamlit */
+    padding: 1rem 1rem 0.5rem 1rem;
+    border-top: 1px solid #262730;
+    z-index: 999;
+}
+
+/* Añade espacio en la parte inferior para que el contenido no quede oculto */
+.main .block-container {
+    padding-bottom: 12rem;
+}
+
+/* Ajustes para botones en la barra de chat */
+div[data-testid="stHorizontalBlock"] button {
+    height: 100%;
+    width: 100%;
 }
 
 
@@ -36,5 +60,5 @@
 /* Estilo para cuando el mouse pasa por encima del enlace */
 .footer-link a:hover {
     text-decoration: underline;
-    color: #1032cc; /* Un color rojo para el hover */
+    color: #1032cc; /* Un color azul más brillante para el hover */
 }
