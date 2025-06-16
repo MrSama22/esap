@@ -55,36 +55,26 @@ LANG_CONFIG = {
         "tts_voice": {"language_code": "es-US", "name": "es-US-Standard-B"},
         "prompt_template": """
             Eres un asistente experto del Colegio Santo Domingo Bilingüe. Tu única función es responder preguntas basándote en el contenido de un documento institucional que se te proporciona en el 'Contexto'.
-
-            **Instrucciones Críticas:**
-            1.  **Búsqueda Exhaustiva:** Antes de responder, revisa CUIDADOSAMENTE y de forma COMPLETA todo el 'Contexto' que se te ha entregado. La respuesta que buscas SIEMPRE estará en ese texto. No asumas que no la tienes. Busca en cada rincón del contexto proporcionado.
-            3.  **Respuesta Directa:** Si encuentras la respuesta, preséntala de forma clara y concisa. Por ejemplo, si te preguntan por una persona, responde directamente con su nombre y cargo y una breve descripcion.
-            4.  **Manejo de Incertidumbre:** Solo si después de una búsqueda exhaustiva en el 'Contexto' no encuentras una respuesta directa, y únicamente en ese caso, indica amablemente que no tienes la información específica.
-
-            **Contexto:**
-            <context>{context}</context>
-            
-            **Pregunta:** {input}
-            
-            **Respuesta:**
+            Instrucciones Críticas:
+            1. Búsqueda Exhaustiva: Antes de responder, revisa CUIDADOSAMENTE y de forma COMPLETA todo el 'Contexto'. La respuesta SIEMPRE estará en ese texto.
+            2. Respuesta Directa: Si encuentras la respuesta, preséntala de forma clara y concisa.
+            3. Manejo de Incertidumbre: Solo si después de una búsqueda exhaustiva no encuentras una respuesta, indica amablemente que no tienes la información.
+            Contexto: <context>{context}</context>
+            Pregunta: {input}
+            Respuesta:
         """
     },
     "en": {
         "tts_voice": {"language_code": "en-US", "name": "en-US-Wavenet-C"},
         "prompt_template": """
-            You are an expert assistant for the Santo Domingo Bilingual School. Your sole function is to answer questions based on the content of an institutional document provided to you in the 'Context'.
-
-            **Critical Instructions:**
-            1.  **Exhaustive Search:** Before answering, CAREFULLY and COMPLETELY review all the 'Context' you have been given. The answer you are looking for will ALWAYS be in that text. Do not assume you don't have it. Search every corner of the provided context.
-            3.  **Direct Answer:** If you find the answer, present it clearly and concisely. For example, if asked about a person, answer directly with their name and role and a short description.
-            4.  **Handling Uncertainty:** Only if, after an exhaustive search of the 'Context', you do not find a direct answer, and only in that case, kindly indicate that you do not have the specific information.
-
-            **Context:**
-            <context>{context}</context>
-            
-            **Question:** {input}
-            
-            **Answer:**
+            You are an expert assistant for the Santo Domingo Bilingual School. Your sole function is to answer questions based on the content of an institutional document provided in the 'Context'.
+            Critical Instructions:
+            1. Exhaustive Search: Before answering, CAREFULLY and COMPLETELY review all the 'Context'. The answer will ALWAYS be in that text.
+            2. Direct Answer: If you find the answer, present it clearly and concisely.
+            3. Handling Uncertainty: Only if after an exhaustive search you do not find an answer, kindly indicate that you do not have the information.
+            Context: <context>{context}</context>
+            Question: {input}
+            Answer:
         """
     }
 }
@@ -114,95 +104,110 @@ def verify_credentials_and_get_clients():
         return None, None
 
 @st.cache_resource
-def initialize_rag_components():
+def initialize_rag_components(_llm): # Modificado para recibir el LLM
     try:
-        load_dotenv()
-        api_key = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
-        if not api_key:
-            st.error("Error: GOOGLE_API_KEY no está configurada.", icon="🚨")
-            return None, None
-        
         if not os.path.exists(CONFIG["PDF_DOCUMENT_PATH"]):
             st.error(f"Error: No se encontró el documento PDF en la ruta: {CONFIG['PDF_DOCUMENT_PATH']}", icon="🚨")
-            return None, None
-
+            return None
+        
         loader = PyPDFLoader(CONFIG["PDF_DOCUMENT_PATH"])
         docs = loader.load()
-        
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         chunks = text_splitter.split_documents(docs)
         
+        api_key = st.secrets.get("GOOGLE_API_KEY")
         embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
         vectorstore = Chroma.from_documents(documents=chunks, embedding=embeddings)
         
-        llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key, temperature=0)
-        
         base_retriever = vectorstore.as_retriever(search_kwargs={"k": 30})
-        document_compressor = LLMChainExtractor.from_llm(llm)
+        document_compressor = LLMChainExtractor.from_llm(_llm)
         compression_retriever = ContextualCompressionRetriever(
-            base_compressor=document_compressor, 
-            base_retriever=base_retriever
+            base_compressor=document_compressor, base_retriever=base_retriever
         )
-        return compression_retriever, llm
+        return compression_retriever
     except Exception as e:
         st.error(f"Ocurrió un error crítico al inicializar la IA: {e}", icon="🚨")
-        return None, None
+        return None
 
 def text_to_speech(client, text, voice_params):
-    if not client: return None
+    if not client or not text or not text.strip(): return None
     try:
         synthesis_input = texttospeech.SynthesisInput(text=text)
         voice = texttospeech.VoiceSelectionParams(
-            language_code=voice_params["language_code"],
-            name=voice_params["name"]
+            language_code=voice_params["language_code"], name=voice_params["name"]
         )
         audio_config = texttospeech.AudioConfig(audio_encoding=texttospeech.AudioEncoding.MP3)
         response = client.synthesize_speech(input=synthesis_input, voice=voice, audio_config=audio_config)
         return response.audio_content
     except Exception as e:
-        st.error(f"Error en la API de Text-to-Speech: {e}", icon="🚨")
+        st.warning(f"No se pudo generar el audio para esta respuesta (API TTS Error).", icon="🔇")
         return None
 
 def speech_to_text(client, audio_bytes):
-    if not client or not audio_bytes: 
-        return None
-
+    if not client or not audio_bytes: return None
     try:
-        audio_segment = AudioSegment.from_file(io.BytesIO(audio_bytes))
-        audio_segment = audio_segment.set_channels(1)
-        
-        mono_audio_bytes_io = io.BytesIO()
-        audio_segment.export(mono_audio_bytes_io, format="wav")
-        mono_audio_bytes = mono_audio_bytes_io.getvalue()
-        
-        audio = speech.RecognitionAudio(content=mono_audio_bytes)
+        audio = speech.RecognitionAudio(content=io.BytesIO(audio_bytes).read())
         config = speech.RecognitionConfig(
-            language_code="es-CO",
-            alternative_language_codes=["en-US"],
-            enable_automatic_punctuation=True
+            language_code="es-CO", alternative_language_codes=["en-US"], enable_automatic_punctuation=True
         )
         response = client.recognize(config=config, audio=audio)
-        
-        if response.results and response.results[0].alternatives:
-            return response.results[0].alternatives[0].transcript
-        else:
-            return None
-            
+        return response.results[0].alternatives[0].transcript if response.results else None
     except Exception as e:
         st.error(f"Error al procesar o transcribir el audio: {e}", icon="🚨")
         return None
-        
+
 def main():
     st.set_page_config(page_title=CONFIG["PAGE_TITLE"], page_icon=CONFIG["PAGE_ICON"], layout="wide")
     load_local_css(CONFIG["CSS_FILE_PATH"])
 
+    # --- INICIALIZACIÓN CENTRALIZADA ---
     tts_client, stt_client = verify_credentials_and_get_clients()
-    retriever, llm = initialize_rag_components()
+    
+    api_key = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
+    if not api_key:
+        st.error("Error: GOOGLE_API_KEY no está configurada.", icon="🚨")
+        st.stop()
+
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key, temperature=0)
+    retriever = initialize_rag_components(llm)
 
     if not all([tts_client, stt_client, retriever, llm]):
         st.error("La aplicación no puede continuar debido a un error de inicialización.", icon="🛑")
         st.stop()
         
+    # --- NUEVA FUNCIÓN UNIFICADA PARA MANEJAR PROMPTS ---
+    def handle_new_prompt(prompt):
+        # 1. Añadir prompt del usuario al historial
+        st.session_state.messages.append({"role": "user", "content": prompt})
+
+        # 2. Generar la respuesta de la IA
+        with st.spinner(CONFIG["SPINNER_MESSAGE"]):
+            try:
+                lang_code = detect(prompt)
+                if lang_code not in LANG_CONFIG: lang_code = DEFAULT_LANG
+            except LangDetectException:
+                lang_code = DEFAULT_LANG
+            
+            selected_lang_config = LANG_CONFIG[lang_code]
+            prompt_obj = ChatPromptTemplate.from_template(selected_lang_config["prompt_template"])
+            document_chain = create_stuff_documents_chain(llm, prompt_obj)
+            rag_chain = create_retrieval_chain(retriever, document_chain)
+            
+            response = rag_chain.invoke({"input": prompt})
+            respuesta_ia = response.get("answer", "No pude encontrar una respuesta.")
+
+            # 3. Generar audio para la respuesta
+            audio_content = text_to_speech(tts_client, respuesta_ia, selected_lang_config["tts_voice"])
+
+        # 4. Añadir respuesta COMPLETA (texto + audio) al historial
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": respuesta_ia,
+            "audio": audio_content # Guardamos el audio aquí
+        })
+        st.rerun()
+
+    # --- INTERFAZ DE USUARIO ---
     with st.container():
         st.markdown('<div class="header-container">', unsafe_allow_html=True)
         if os.path.exists(CONFIG["HEADER_IMAGE"]):
@@ -212,95 +217,37 @@ def main():
     st.write(CONFIG["APP_SUBHEADER"])
     
     if "messages" not in st.session_state:
-        st.session_state.messages = [{"role": "assistant", "content": CONFIG["WELCOME_MESSAGE"]}]
+        st.session_state.messages = [{
+            "role": "assistant", 
+            "content": CONFIG["WELCOME_MESSAGE"],
+            "audio": None # Asegurarse de que todos los mensajes tengan la clave de audio
+        }]
 
-    # --- FUNCIÓN DE PROCESAMIENTO MEJORADA ---
-    def process_and_display_response(prompt: str):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        
-        with st.chat_message("assistant"):
-            with st.spinner(CONFIG["SPINNER_MESSAGE"]):
-                respuesta_ia = ""
-                try:
-                    lang_code = detect(prompt)
-                    if lang_code not in LANG_CONFIG:
-                        lang_code = DEFAULT_LANG
-                except LangDetectException:
-                    lang_code = DEFAULT_LANG
-
-                selected_lang_config = LANG_CONFIG[lang_code]
-                prompt_template_str = selected_lang_config["prompt_template"]
-                tts_voice_params = selected_lang_config["tts_voice"]
-
-                prompt_obj = ChatPromptTemplate.from_template(prompt_template_str)
-                document_chain = create_stuff_documents_chain(llm, prompt_obj)
-                rag_chain = create_retrieval_chain(retriever, document_chain)
-
-                try:
-                    response = rag_chain.invoke({"input": prompt})
-                    # Usar .get() para evitar errores si la clave "answer" no existe
-                    respuesta_ia = response.get("answer", "")
-                except Exception as e:
-                    respuesta_ia = f"Lo siento, tuve un problema al generar la respuesta: {e}"
-                    st.error(respuesta_ia, icon="🚨")
-
-            # --- LÓGICA DE VISUALIZACIÓN Y AUDIO "A PRUEBA DE BALAS" ---
-            st.markdown(respuesta_ia)
-            
-            # 1. Verificar que la respuesta de texto no esté vacía antes de generar audio
-            if respuesta_ia and respuesta_ia.strip():
-                audio_content = text_to_speech(tts_client, respuesta_ia, tts_voice_params)
-                
-                # 2. Verificar que la API de TTS realmente devolvió audio
-                if audio_content:
-                    # 3. Mostrar el reproductor SIN autoplay para máxima compatibilidad
-                    st.audio(audio_content, format='audio/mp3')
-                else:
-                    # 4. Informar al usuario si la generación de audio falló
-                    st.warning("No se pudo generar el audio para esta respuesta.", icon="🔇")
-            
-            # Guardar el mensaje de texto de la IA en el historial
-            st.session_state.messages.append({"role": "assistant", "content": respuesta_ia})
-
-    # Dibuja el historial de chat existente
+    # --- LÓGICA DE RENDERIZADO (SEPARADA Y SIMPLE) ---
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
+            # Si el mensaje tiene audio, lo muestra
+            if message.get("audio"):
+                st.audio(message["audio"], format='audio/mp3')
 
-    # Procesa el audio si existe en el estado de la sesión
-    if "prompt_from_audio" in st.session_state and st.session_state.prompt_from_audio:
-        prompt_de_audio = st.session_state.prompt_from_audio
-        st.session_state.prompt_from_audio = None 
-        process_and_display_response(prompt_de_audio)
-        st.rerun()
-
-    # Entrada de texto del usuario
+    # --- MANEJO DE ENTRADAS (UNIFICADO) ---
+    # Entrada de texto
     if prompt_texto := st.chat_input("Escribe tu pregunta o usa el micrófono..."):
-        process_and_display_response(prompt_texto)
-        st.rerun()
+        handle_new_prompt(prompt_texto)
 
-    # Entrada de audio del usuario
-    st.markdown('<div class="mic-button-container">', unsafe_allow_html=True)
-    audio_bytes = audio_recorder(
-        text="",
-        icon_size="2x",
-        recording_color="#e84242",
-        neutral_color="#646464"
-    )
-    st.markdown('</div>', unsafe_allow_html=True)
-
+    # Entrada de audio
+    audio_bytes = audio_recorder(text="", icon_size="2x", recording_color="#e84242", neutral_color="#646464")
     if audio_bytes:
-        with st.spinner("Transcribiendo tu voz..."):
+        with st.spinner("Transcribiendo..."):
             transcribed_prompt = speech_to_text(stt_client, audio_bytes)
-        
         if transcribed_prompt:
-            st.session_state.prompt_from_audio = transcribed_prompt
-            st.rerun()
+            handle_new_prompt(transcribed_prompt)
         else:
-            st.toast("No pude entender lo que dijiste. Por favor, intenta de nuevo.", icon="🎙️")
+            st.toast("No pude entender lo que dijiste.", icon="🎙️")
     
     st.divider()
-    st.caption(f"Para más información, puedes visitar la [{CONFIG['WEBSITE_LINK_TEXT']}]({CONFIG['OFFICIAL_WEBSITE_URL']}).")
+    st.caption(f"Para más información, visita la [{CONFIG['WEBSITE_LINK_TEXT']}]({CONFIG['OFFICIAL_WEBSITE_URL']}).")
 
 if __name__ == "__main__":
     try:
