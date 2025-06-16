@@ -270,7 +270,7 @@ def main():
                 "Escribe tu pregunta o usa el micrófono...",
                 key="text_area_input",
                 value=st.session_state.current_prompt,
-                height=50
+                #height=50
             )
 
         with col2:
