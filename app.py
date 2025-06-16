@@ -58,7 +58,7 @@ LANG_CONFIG = {
             Instrucciones Críticas:
             1. Búsqueda Exhaustiva: Antes de responder, revisa CUIDADOSAMENTE y de forma COMPLETA todo el 'Contexto'. La respuesta SIEMPRE estará en ese texto.
             2. Respuesta Directa: Si encuentras la respuesta, preséntala de forma clara y concisa.
-            3. Manejo de Incertidumbre: Solo si después de una búsqueda exhaustiva no encuentras una respuesta, indica amablemente que no tienes la información.
+            3. Manejo de Incertidumbre: Solo si después de una búsqueda exhaustiva no encuentras una respuesta, indica amablemente que no tienes la información específica.
             Contexto: <context>{context}</context>
             Pregunta: {input}
             Respuesta:
@@ -104,7 +104,7 @@ def verify_credentials_and_get_clients():
         return None, None
 
 @st.cache_resource
-def initialize_rag_components(_llm): # Modificado para recibir el LLM
+def initialize_rag_components(_llm):
     try:
         if not os.path.exists(CONFIG["PDF_DOCUMENT_PATH"]):
             st.error(f"Error: No se encontró el documento PDF en la ruta: {CONFIG['PDF_DOCUMENT_PATH']}", icon="🚨")
@@ -143,10 +143,24 @@ def text_to_speech(client, text, voice_params):
         st.warning(f"No se pudo generar el audio para esta respuesta (API TTS Error).", icon="🔇")
         return None
 
+# --- FUNCIÓN speech_to_text CORREGIDA ---
 def speech_to_text(client, audio_bytes):
     if not client or not audio_bytes: return None
     try:
-        audio = speech.RecognitionAudio(content=io.BytesIO(audio_bytes).read())
+        # Cargar los bytes del audio grabado en un objeto pydub
+        audio_segment = AudioSegment.from_file(io.BytesIO(audio_bytes))
+
+        # Forzar la conversión a 1 solo canal (mono)
+        audio_segment = audio_segment.set_channels(1)
+
+        # Exportar el audio (ya en mono) a un buffer de bytes en formato WAV
+        mono_audio_buffer = io.BytesIO()
+        audio_segment.export(mono_audio_buffer, format="wav")
+        
+        # Usar los bytes del audio en mono para la transcripción
+        audio_content = mono_audio_buffer.getvalue()
+        audio = speech.RecognitionAudio(content=audio_content)
+        
         config = speech.RecognitionConfig(
             language_code="es-CO", alternative_language_codes=["en-US"], enable_automatic_punctuation=True
         )
@@ -160,7 +174,6 @@ def main():
     st.set_page_config(page_title=CONFIG["PAGE_TITLE"], page_icon=CONFIG["PAGE_ICON"], layout="wide")
     load_local_css(CONFIG["CSS_FILE_PATH"])
 
-    # --- INICIALIZACIÓN CENTRALIZADA ---
     tts_client, stt_client = verify_credentials_and_get_clients()
     
     api_key = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
@@ -175,12 +188,8 @@ def main():
         st.error("La aplicación no puede continuar debido a un error de inicialización.", icon="🛑")
         st.stop()
         
-    # --- NUEVA FUNCIÓN UNIFICADA PARA MANEJAR PROMPTS ---
     def handle_new_prompt(prompt):
-        # 1. Añadir prompt del usuario al historial
         st.session_state.messages.append({"role": "user", "content": prompt})
-
-        # 2. Generar la respuesta de la IA
         with st.spinner(CONFIG["SPINNER_MESSAGE"]):
             try:
                 lang_code = detect(prompt)
@@ -195,19 +204,15 @@ def main():
             
             response = rag_chain.invoke({"input": prompt})
             respuesta_ia = response.get("answer", "No pude encontrar una respuesta.")
-
-            # 3. Generar audio para la respuesta
             audio_content = text_to_speech(tts_client, respuesta_ia, selected_lang_config["tts_voice"])
 
-        # 4. Añadir respuesta COMPLETA (texto + audio) al historial
         st.session_state.messages.append({
             "role": "assistant",
             "content": respuesta_ia,
-            "audio": audio_content # Guardamos el audio aquí
+            "audio": audio_content
         })
         st.rerun()
 
-    # --- INTERFAZ DE USUARIO ---
     with st.container():
         st.markdown('<div class="header-container">', unsafe_allow_html=True)
         if os.path.exists(CONFIG["HEADER_IMAGE"]):
@@ -220,23 +225,18 @@ def main():
         st.session_state.messages = [{
             "role": "assistant", 
             "content": CONFIG["WELCOME_MESSAGE"],
-            "audio": None # Asegurarse de que todos los mensajes tengan la clave de audio
+            "audio": None
         }]
 
-    # --- LÓGICA DE RENDERIZADO (SEPARADA Y SIMPLE) ---
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
-            # Si el mensaje tiene audio, lo muestra
             if message.get("audio"):
                 st.audio(message["audio"], format='audio/mp3')
 
-    # --- MANEJO DE ENTRADAS (UNIFICADO) ---
-    # Entrada de texto
     if prompt_texto := st.chat_input("Escribe tu pregunta o usa el micrófono..."):
         handle_new_prompt(prompt_texto)
 
-    # Entrada de audio
     audio_bytes = audio_recorder(text="", icon_size="2x", recording_color="#e84242", neutral_color="#646464")
     if audio_bytes:
         with st.spinner("Transcribiendo..."):
