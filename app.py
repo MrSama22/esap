@@ -264,7 +264,7 @@ col1, col2 = st.columns([1, 6]) # Columna para el botón de voz
 with col1:
     # --- NUEVO: Componente de grabadora de voz ---
     # `key` es importante para que Streamlit maneje el estado correctamente
-    audio_bytes = st_audiorec(key="audio_recorder")
+    audio_bytes = st_audiorec()#key="audio_recorder"
 
 # Si se grabó audio, transcríbelo y procesa la pregunta
 if audio_bytes:
