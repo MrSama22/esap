@@ -143,21 +143,14 @@ def text_to_speech(client, text, voice_params):
         st.warning(f"No se pudo generar el audio para esta respuesta (API TTS Error).", icon="🔇")
         return None
 
-# --- FUNCIÓN speech_to_text CORREGIDA ---
 def speech_to_text(client, audio_bytes):
     if not client or not audio_bytes: return None
     try:
-        # Cargar los bytes del audio grabado en un objeto pydub
         audio_segment = AudioSegment.from_file(io.BytesIO(audio_bytes))
-
-        # Forzar la conversión a 1 solo canal (mono)
         audio_segment = audio_segment.set_channels(1)
-
-        # Exportar el audio (ya en mono) a un buffer de bytes en formato WAV
         mono_audio_buffer = io.BytesIO()
         audio_segment.export(mono_audio_buffer, format="wav")
         
-        # Usar los bytes del audio en mono para la transcripción
         audio_content = mono_audio_buffer.getvalue()
         audio = speech.RecognitionAudio(content=audio_content)
         
@@ -228,24 +221,47 @@ def main():
             "audio": None
         }]
 
+    # --- INICIO DE LA LÓGICA CORREGIDA PARA EVITAR BUCLES ---
+
+    # 1. PROCESAR EL AUDIO PENDIENTE (SI LO HAY)
+    # Este bloque revisa el "buzón" de audio al inicio de cada ejecución.
+    if "audio_to_process" in st.session_state and st.session_state.audio_to_process:
+        audio_bytes = st.session_state.audio_to_process
+        
+        # **LA LÍNEA MÁS IMPORTANTE**: Limpiamos el buzón para no volver a procesar.
+        st.session_state.audio_to_process = None
+        
+        with st.spinner("Transcribiendo..."):
+            transcribed_prompt = speech_to_text(stt_client, audio_bytes)
+        
+        if transcribed_prompt:
+            handle_new_prompt(transcribed_prompt)
+        else:
+            st.toast("No pude entender lo que dijiste.", icon="🎙️")
+            st.rerun() # Hacemos rerun para limpiar el spinner y el toast
+
+    # 2. RENDERIZAR EL CHAT
+    # Esta parte no cambia, solo dibuja lo que hay en el historial.
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
             if message.get("audio"):
                 st.audio(message["audio"], format='audio/mp3')
 
+    # 3. MANEJAR LAS ENTRADAS DEL USUARIO
+    # Entrada de texto (sin cambios)
     if prompt_texto := st.chat_input("Escribe tu pregunta o usa el micrófono..."):
         handle_new_prompt(prompt_texto)
 
-    audio_bytes = audio_recorder(text="", icon_size="2x", recording_color="#e84242", neutral_color="#646464")
-    if audio_bytes:
-        with st.spinner("Transcribiendo..."):
-            transcribed_prompt = speech_to_text(stt_client, audio_bytes)
-        if transcribed_prompt:
-            handle_new_prompt(transcribed_prompt)
-        else:
-            st.toast("No pude entender lo que dijiste.", icon="🎙️")
+    # Entrada de audio (lógica simplificada)
+    # Ya no procesa directamente, solo guarda el audio en el "buzón".
+    audio_bytes_grabados = audio_recorder(text="", icon_size="2x", recording_color="#e84242", neutral_color="#646464")
+    if audio_bytes_grabados:
+        st.session_state.audio_to_process = audio_bytes_grabados
+        st.rerun() # Forzamos un rerun para que el bloque de arriba lo procese.
     
+    # --- FIN DE LA LÓGICA CORREGIDA ---
+
     st.divider()
     st.caption(f"Para más información, visita la [{CONFIG['WEBSITE_LINK_TEXT']}]({CONFIG['OFFICIAL_WEBSITE_URL']}).")
 
