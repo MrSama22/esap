@@ -237,16 +237,49 @@ def main():
         # Limpia el prompt pendiente y re-ejecuta para mostrar la respuesta final.
         st.session_state.prompt_to_process = None
         st.rerun()
+    
+    # --- FOOTER ---
+    st.divider()
+    st.caption(f"Para más información, visita la [{CONFIG['WEBSITE_LINK_TEXT']}]({CONFIG['OFFICIAL_WEBSITE_URL']}).")
 
-    # --- MANEJO DE ENTRADAS DEL USUARIO ---
-    # Entrada de texto: solo añade el prompt al historial y marca que debe ser procesado.
-    if prompt_texto := st.chat_input("Escribe tu pregunta o usa el micrófono..."):
-        st.session_state.messages.append({"role": "user", "content": prompt_texto})
-        st.session_state.prompt_to_process = prompt_texto
+    # --- MANEJO DE ENTRADAS DEL USUARIO (MODIFICADO) ---
+    st.markdown('<div class="input-container">', unsafe_allow_html=True)
+    col1, col2 = st.columns([0.9, 0.1])
+
+    prompt_texto_enviado = None
+    with col1:
+        prompt_texto = st.text_input(
+            "Escribe tu pregunta o usa el micrófono...", 
+            key="text_input", 
+            label_visibility="collapsed"
+        )
+        # Este es un truco para detectar el Enter sin un botón visible
+        if 'last_text_input' not in st.session_state:
+            st.session_state.last_text_input = ''
+        
+        if st.session_state.last_text_input != prompt_texto and prompt_texto:
+            st.session_state.last_text_input = prompt_texto
+            prompt_texto_enviado = prompt_texto
+
+    with col2:
+        audio_bytes_grabados = audio_recorder(
+            text="", 
+            icon_size="2x", 
+            recording_color="#e84242", 
+            neutral_color="#646464",
+            key="audio_recorder"
+        )
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Procesar el texto enviado
+    if prompt_texto_enviado:
+        st.session_state.messages.append({"role": "user", "content": prompt_texto_enviado})
+        st.session_state.prompt_to_process = prompt_texto_enviado
+        # Limpiar el input visualmente para el próximo uso
+        st.session_state.last_text_input = ""
         st.rerun()
 
-    # Entrada de audio: transcribe, añade el prompt y marca para procesar.
-    audio_bytes_grabados = audio_recorder(text="", icon_size="2x", recording_color="#e84242", neutral_color="#646464")
+    # Procesar el audio grabado
     if audio_bytes_grabados:
         with st.spinner("Transcribiendo..."):
             transcribed_prompt = speech_to_text(stt_client, audio_bytes_grabados)
@@ -257,9 +290,7 @@ def main():
             st.rerun()
         else:
             st.toast("No pude entender lo que dijiste.", icon="🎙️")
-    
-    st.divider()
-    st.caption(f"Para más información, visita la [{CONFIG['WEBSITE_LINK_TEXT']}]({CONFIG['OFFICIAL_WEBSITE_URL']}).")
+
 
 if __name__ == "__main__":
     try:
