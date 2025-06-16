@@ -40,9 +40,9 @@ CONFIG = {
     "PAGE_ICON": "🎓",
     "HEADER_IMAGE": "logo1.png",
     "APP_TITLE": "🎓 Asistente Virtual del Colegio Santo Domingo BIilingüe",
-    "APP_SUBHEADER": "¡Hola! Estoy aquí para responder tus preguntas basándándome en el documento oficial.",
+    "APP_SUBHEADER": "¡Hola! Estoy aquí para responder tus preguntas basándome en el documento oficial.",
     "WELCOME_MESSAGE": "¡Hola! Soy el asistente virtual del CSD. ¿En qué puedo ayudarte? / Hello! I'm the CSDB virtual assistant. How can I help you?",
-    "SPINNER_MESSAGE": "Buscando y preparando tu respuesta...",
+    "SPINNER_MESSAGE": "Generando respuesta...", # Mensaje de spinner más específico
     "PDF_DOCUMENT_PATH": "documento.pdf",
     "OFFICIAL_WEBSITE_URL": "https://colegiosantodomingo.edu.co/",
     "WEBSITE_LINK_TEXT": "Visita la página web oficial",
@@ -167,45 +167,29 @@ def main():
     st.set_page_config(page_title=CONFIG["PAGE_TITLE"], page_icon=CONFIG["PAGE_ICON"], layout="wide")
     load_local_css(CONFIG["CSS_FILE_PATH"])
 
+    # --- INICIALIZACIÓN ---
     tts_client, stt_client = verify_credentials_and_get_clients()
-    
-    api_key = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
+    api_key = st.secrets.get("GOOGLE_API_KEY")
     if not api_key:
         st.error("Error: GOOGLE_API_KEY no está configurada.", icon="🚨")
         st.stop()
-
     llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key, temperature=0)
     retriever = initialize_rag_components(llm)
-
     if not all([tts_client, stt_client, retriever, llm]):
         st.error("La aplicación no puede continuar debido a un error de inicialización.", icon="🛑")
         st.stop()
-        
-    def handle_new_prompt(prompt):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.spinner(CONFIG["SPINNER_MESSAGE"]):
-            try:
-                lang_code = detect(prompt)
-                if lang_code not in LANG_CONFIG: lang_code = DEFAULT_LANG
-            except LangDetectException:
-                lang_code = DEFAULT_LANG
-            
-            selected_lang_config = LANG_CONFIG[lang_code]
-            prompt_obj = ChatPromptTemplate.from_template(selected_lang_config["prompt_template"])
-            document_chain = create_stuff_documents_chain(llm, prompt_obj)
-            rag_chain = create_retrieval_chain(retriever, document_chain)
-            
-            response = rag_chain.invoke({"input": prompt})
-            respuesta_ia = response.get("answer", "No pude encontrar una respuesta.")
-            audio_content = text_to_speech(tts_client, respuesta_ia, selected_lang_config["tts_voice"])
 
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": respuesta_ia,
-            "audio": audio_content
-        })
-        st.rerun()
+    # --- GESTIÓN DE ESTADO DE LA SESIÓN ---
+    if "messages" not in st.session_state:
+        st.session_state.messages = [{
+            "role": "assistant", 
+            "content": CONFIG["WELCOME_MESSAGE"],
+            "audio": None
+        }]
+    if "prompt_to_process" not in st.session_state:
+        st.session_state.prompt_to_process = None
 
+    # --- INTERFAZ GRÁFICA ---
     with st.container():
         st.markdown('<div class="header-container">', unsafe_allow_html=True)
         if os.path.exists(CONFIG["HEADER_IMAGE"]):
@@ -213,42 +197,66 @@ def main():
         st.markdown('</div>', unsafe_allow_html=True)
     st.title(CONFIG["APP_TITLE"])
     st.write(CONFIG["APP_SUBHEADER"])
-    
-    if "messages" not in st.session_state:
-        st.session_state.messages = [{
-            "role": "assistant", 
-            "content": CONFIG["WELCOME_MESSAGE"],
-            "audio": None
-        }]
 
-    if "audio_to_process" in st.session_state and st.session_state.audio_to_process:
-        audio_bytes = st.session_state.audio_to_process
-        st.session_state.audio_to_process = None
-        
-        with st.spinner("Transcribiendo..."):
-            transcribed_prompt = speech_to_text(stt_client, audio_bytes)
-        
-        if transcribed_prompt:
-            handle_new_prompt(transcribed_prompt)
-        else:
-            st.toast("No pude entender lo que dijiste.", icon="🎙️")
-            st.rerun()
-
+    # --- LÓGICA DE RENDERIZADO DEL CHAT ---
+    # 1. Dibuja todos los mensajes que ya han sido completados.
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
             if message.get("audio"):
-                # --- LÍNEA MODIFICADA ---
-                # Se añade autoplay=True para que el audio se reproduzca automáticamente.
                 st.audio(message["audio"], format='audio/mp3', autoplay=True)
 
-    if prompt_texto := st.chat_input("Escribe tu pregunta o usa el micrófono..."):
-        handle_new_prompt(prompt_texto)
+    # 2. Revisa si hay un nuevo prompt que necesite ser procesado.
+    if prompt := st.session_state.get("prompt_to_process"):
+        # Muestra el placeholder del asistente con el spinner.
+        with st.chat_message("assistant"):
+            with st.spinner(CONFIG["SPINNER_MESSAGE"]):
+                # Lógica de negocio: procesa el prompt para obtener la respuesta.
+                try:
+                    lang_code = detect(prompt)
+                    if lang_code not in LANG_CONFIG: lang_code = DEFAULT_LANG
+                except LangDetectException:
+                    lang_code = DEFAULT_LANG
+                
+                selected_lang_config = LANG_CONFIG[lang_code]
+                prompt_obj = ChatPromptTemplate.from_template(selected_lang_config["prompt_template"])
+                document_chain = create_stuff_documents_chain(llm, prompt_obj)
+                rag_chain = create_retrieval_chain(retriever, document_chain)
+                
+                response = rag_chain.invoke({"input": prompt})
+                respuesta_ia = response.get("answer", "No pude encontrar una respuesta.")
+                audio_content = text_to_speech(tts_client, respuesta_ia, selected_lang_config["tts_voice"])
 
+                # Añade la respuesta final al historial de mensajes.
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": respuesta_ia,
+                    "audio": audio_content
+                })
+        
+        # Limpia el prompt pendiente y re-ejecuta para mostrar la respuesta final.
+        st.session_state.prompt_to_process = None
+        st.rerun()
+
+    # --- MANEJO DE ENTRADAS DEL USUARIO ---
+    # Entrada de texto: solo añade el prompt al historial y marca que debe ser procesado.
+    if prompt_texto := st.chat_input("Escribe tu pregunta o usa el micrófono..."):
+        st.session_state.messages.append({"role": "user", "content": prompt_texto})
+        st.session_state.prompt_to_process = prompt_texto
+        st.rerun()
+
+    # Entrada de audio: transcribe, añade el prompt y marca para procesar.
     audio_bytes_grabados = audio_recorder(text="", icon_size="2x", recording_color="#e84242", neutral_color="#646464")
     if audio_bytes_grabados:
-        st.session_state.audio_to_process = audio_bytes_grabados
-        st.rerun()
+        with st.spinner("Transcribiendo..."):
+            transcribed_prompt = speech_to_text(stt_client, audio_bytes_grabados)
+        
+        if transcribed_prompt:
+            st.session_state.messages.append({"role": "user", "content": transcribed_prompt})
+            st.session_state.prompt_to_process = transcribed_prompt
+            st.rerun()
+        else:
+            st.toast("No pude entender lo que dijiste.", icon="🎙️")
     
     st.divider()
     st.caption(f"Para más información, visita la [{CONFIG['WEBSITE_LINK_TEXT']}]({CONFIG['OFFICIAL_WEBSITE_URL']}).")
