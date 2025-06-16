@@ -13,6 +13,10 @@ import os
 import sqlite3
 from dotenv import load_dotenv
 
+# --- LIBRERÍAS PARA PROCESAR AUDIO ---
+import io
+from pydub import AudioSegment
+
 # --- LIBRERÍAS REQUERIDAS ---
 from google.cloud import texttospeech
 from google.cloud import speech
@@ -28,8 +32,6 @@ from langchain_core.prompts import ChatPromptTemplate
 from langdetect import detect, LangDetectException
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
-
-# --- NUEVO: Librería para un control de grabación de audio más limpio ---
 from audio_recorder_streamlit import audio_recorder
 
 # --- CONFIGURACIÓN ---
@@ -47,7 +49,7 @@ CONFIG = {
     "CSS_FILE_PATH": "styles.css"
 }
 
-# --- CONFIGURACIÓN MULTILINGÜE (Sin cambios) ---
+# --- CONFIGURACIÓN MULTILINGÜE ---
 LANG_CONFIG = {
     "es": {
         "tts_voice": {"language_code": "es-US", "name": "es-US-Standard-B"},
@@ -88,7 +90,7 @@ LANG_CONFIG = {
 }
 DEFAULT_LANG = "es"
 
-# --- FUNCIONES DE LÓGICA (la mayoría sin cambios) ---
+# --- FUNCIONES DE LÓGICA ---
 
 @st.cache_data
 def load_local_css(file_name):
@@ -96,10 +98,8 @@ def load_local_css(file_name):
         if os.path.exists(file_name):
             with open(file_name, "r", encoding="utf-8") as f:
                 st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-                return True # NUEVO: Devolver estado para comprobación
     except Exception as e:
         st.warning(f"No se pudo cargar el archivo CSS: {e}")
-    return False
 
 @st.cache_resource
 def verify_credentials_and_get_clients():
@@ -108,7 +108,6 @@ def verify_credentials_and_get_clients():
         credentials = service_account.Credentials.from_service_account_info(creds_dict)
         tts_client = texttospeech.TextToSpeechClient(credentials=credentials)
         stt_client = speech.SpeechClient(credentials=credentials)
-        st.success("Credenciales de Google Cloud verificadas correctamente.", icon="✅")
         return tts_client, stt_client
     except Exception as e:
         st.error(f"Error crítico al verificar credenciales de Google Cloud: {e}", icon="🚨")
@@ -144,7 +143,6 @@ def initialize_rag_components():
             base_compressor=document_compressor, 
             base_retriever=base_retriever
         )
-        st.success("Componentes de IA inicializados correctamente.", icon="✅")
         return compression_retriever, llm
     except Exception as e:
         st.error(f"Ocurrió un error crítico al inicializar la IA: {e}", icon="🚨")
@@ -166,21 +164,29 @@ def text_to_speech(client, text, voice_params):
         return None
 
 def speech_to_text(client, audio_bytes):
-    if not client or not audio_bytes: return None
+    if not client or not audio_bytes: 
+        return None
+
     try:
-        audio = speech.RecognitionAudio(content=audio_bytes)
+        # 1. Cargar los bytes del audio grabado en pydub
+        audio_segment = AudioSegment.from_file(io.BytesIO(audio_bytes))
+
+        # 2. Forzar la conversión a un solo canal (mono)
+        audio_segment = audio_segment.set_channels(1)
         
-        # --- CORRECCIÓN AQUÍ ---
-        # Hemos eliminado la línea "sample_rate_hertz=16000,".
-        # Esto permite a la API de Google detectar la tasa de muestreo 
-        # automáticamente desde el encabezado del archivo de audio.
+        # 3. Exportar el audio modificado de vuelta a bytes en formato WAV
+        mono_audio_bytes_io = io.BytesIO()
+        audio_segment.export(mono_audio_bytes_io, format="wav")
+        mono_audio_bytes = mono_audio_bytes_io.getvalue()
+        
+        # 4. Usar los bytes del audio ya convertido para la transcripción
+        audio = speech.RecognitionAudio(content=mono_audio_bytes)
+
         config = speech.RecognitionConfig(
-            encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
             language_code="es-CO",
             alternative_language_codes=["en-US"],
             enable_automatic_punctuation=True
         )
-        # --- FIN DE LA CORRECCIÓN ---
         
         with st.spinner("Transcribiendo tu voz..."):
             response = client.recognize(config=config, audio=audio)
@@ -192,30 +198,21 @@ def speech_to_text(client, audio_bytes):
             return None
             
     except Exception as e:
-        st.error(f"Error al transcribir el audio (Speech-to-Text): {e}", icon="🚨")
+        st.error(f"Error al procesar o transcribir el audio: {e}", icon="🚨")
         return None
         
-# --- LÓGICA PRINCIPAL DE LA APP ---
-
 def main():
-    """Función principal que orquesta la aplicación Streamlit."""
-    
     st.set_page_config(page_title=CONFIG["PAGE_TITLE"], page_icon=CONFIG["PAGE_ICON"], layout="wide")
     
-    # --- Carga de CSS y configuración inicial ---
     load_local_css(CONFIG["CSS_FILE_PATH"])
 
-    # --- Verificación de credenciales y componentes de IA ---
-    # Se ejecuta solo una vez gracias a @st.cache_resource
     tts_client, stt_client = verify_credentials_and_get_clients()
     retriever, llm = initialize_rag_components()
 
-    # Si los componentes críticos fallan, detener la ejecución.
     if not all([tts_client, stt_client, retriever, llm]):
-        st.error("La aplicación no puede continuar debido a un error de inicialización. Revisa los mensajes de error anteriores.", icon="🛑")
+        st.error("La aplicación no puede continuar debido a un error de inicialización. Revisa los mensajes anteriores.", icon="🛑")
         st.stop()
         
-    # --- Encabezado de la página ---
     with st.container():
         st.markdown('<div class="header-container">', unsafe_allow_html=True)
         if os.path.exists(CONFIG["HEADER_IMAGE"]):
@@ -224,16 +221,9 @@ def main():
     st.title(CONFIG["APP_TITLE"])
     st.write(CONFIG["APP_SUBHEADER"])
     
-    # --- Inicialización del estado de la sesión ---
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": CONFIG["WELCOME_MESSAGE"]}]
-    # NUEVO: Estados para controlar la grabación y el texto transcrito
-    if "is_recording" not in st.session_state:
-        st.session_state.is_recording = False
-    if "transcribed_text" not in st.session_state:
-        st.session_state.transcribed_text = None
 
-    # --- Lógica del Chat (procesamiento de respuesta) ---
     def process_and_display_response(prompt: str):
         st.session_state.messages.append({"role": "user", "content": prompt})
         
@@ -266,51 +256,39 @@ def main():
                     st.session_state.messages.append({"role": "assistant", "content": respuesta_ia})
                 
                 except Exception as e:
-                    st.error(f"Error al invocar la cadena de RAG: {e}", icon="🚨")
+                    st.error(f"Error al invocar la cadena de IA: {e}", icon="🚨")
                     st.session_state.messages.append({"role": "assistant", "content": f"Lo siento, tuve un problema al procesar tu solicitud: {e}"})
 
-    # --- DIBUJAR LA INTERFAZ DEL CHAT ---
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # --- NUEVA LÓGICA DE BARRA DE ENTRADA UNIFICADA ---
-    # Usamos st.chat_input para una mejor experiencia en móviles y escritorio
     prompt = st.chat_input("Escribe tu pregunta o usa el micrófono...", key="text_input")
     
-    # Si el usuario envió texto, procesarlo
     if prompt:
         process_and_display_response(prompt)
-        st.rerun() # Limpiar la caja de texto y mostrar la respuesta
+        st.rerun()
 
-    # Lógica del botón del micrófono
     st.markdown('<div class="mic-button-container">', unsafe_allow_html=True)
     audio_bytes = audio_recorder(
-        text="", # Texto del botón, lo dejamos vacío para usar solo el ícono
-        icon_size="2x", # Tamaño del ícono
-        pause_threshold=3.0, # Pausa para detener automáticamente (opcional)
+        text="",
+        icon_size="2x",
         recording_color="#e84242",
         neutral_color="#646464",
         key="audio_recorder"
     )
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Si audio_recorder devuelve bytes, significa que se completó una grabación
     if audio_bytes:
         transcribed_prompt = speech_to_text(stt_client, audio_bytes)
         if transcribed_prompt:
-            # En lugar de procesar, llenamos el input para que el usuario envíe manualmente
-            st.session_state.transcribed_text = transcribed_prompt
-            # Usamos JS para actualizar el valor del input y hacer un rerun
             st.components.v1.html(
                 f"""
                 <script>
-                // Busca el text_input de Streamlit por su etiqueta
                 var input = window.parent.document.querySelector("input[aria-label='Escribe tu pregunta o usa el micrófono...']");
-                input.value = `{transcribed_prompt.replace("`", "\\`")}`; // Llena el input
-                input.dispatchEvent(new Event('input', {{ bubbles: true }})); // Notifica a Streamlit del cambio
+                input.value = `{transcribed_prompt.replace("`", "\\`")}`;
+                input.dispatchEvent(new Event('input', {{ bubbles: true }}));
 
-                // Simula un "Enter" para enviar el formulario
                 const enterKeyEvent = new KeyboardEvent('keydown', {{
                     key: 'Enter',
                     code: 'Enter',
@@ -325,16 +303,12 @@ def main():
                 height=0,
             )
 
-
-    # --- ENLACE FINAL ---
     st.divider()
     st.caption(f"Para más información, puedes visitar la [{CONFIG['WEBSITE_LINK_TEXT']}]({CONFIG['OFFICIAL_WEBSITE_URL']}).")
-
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        # NUEVO: Captura de errores a nivel de aplicación para depuración
         st.error(f"Ha ocurrido un error inesperado en la aplicación: {e}", icon="💥")
-        st.exception(e) # Muestra el stack trace completo para facilitar la depuración
+        st.exception(e)
