@@ -231,24 +231,26 @@ def main():
         st.session_state.prompt_to_process = None
         st.rerun()
 
-    # --- INPUT DE CHAT PERSONALIZADO Y FIJO ---
-    # Ya no es necesario inyectar CSS aquí, se carga desde el archivo styles.css
-    with st.container():
-        st.markdown('<div class="fixed-chat-container">', unsafe_allow_html=True)
+    # --- INPUT DE CHAT PERSONALIZADO Y FIJO (NUEVA ESTRUCTURA) ---
+    st.markdown('<div class="fixed-chat-container">', unsafe_allow_html=True)
+    
+    # Campo de texto arriba
+    prompt_texto = st.text_area("Escribe tu pregunta...", key="chat_input_text", height=80, label_visibility="collapsed")
+    
+    # Fila de botones abajo
+    st.markdown('<div class="button-row">', unsafe_allow_html=True)
+    
+    col_spacer, col_mic, col_send = st.columns([10, 1, 1]) # Columnas para alinear botones a la derecha
+    
+    with col_mic:
+        audio_bytes_grabados = audio_recorder(text="", icon_size="2x", key="audio_recorder_custom")
+
+    with col_send:
+        send_button = st.button("➤", key="send_button")
         
-        col1, col2, col3 = st.columns([8, 1, 1])
-
-        with col1:
-            prompt_texto = st.text_area("Escribe tu pregunta...", key="chat_input_text", height=68, label_visibility="collapsed")
-
-        with col2:
-            audio_bytes_grabados = audio_recorder(text="", icon_size="2x", key="audio_recorder_custom")
-
-        with col3:
-            send_button = st.button("➤", key="send_button")
-
-        st.markdown('</div>', unsafe_allow_html=True)
-
+    st.markdown('</div>', unsafe_allow_html=True) # Cierra button-row
+    st.markdown('</div>', unsafe_allow_html=True) # Cierra fixed-chat-container
+    
     # --- LÓGICA PARA LOS NUEVOS INPUTS ---
     if send_button and st.session_state.chat_input_text.strip():
         st.session_state.messages.append({"role": "user", "content": st.session_state.chat_input_text})
@@ -275,7 +277,6 @@ def main():
     </div>
     """
     st.markdown(footer_html, unsafe_allow_html=True)
-
 
 if __name__ == "__main__":
     try:
