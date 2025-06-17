@@ -33,7 +33,7 @@ from langdetect import detect, LangDetectException
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
 from audio_recorder_streamlit import audio_recorder
-#¡Hola! Soy el asistente virtual del CSDB pero me puedes decir Dominguito.
+#¡Hola! Soy el asistente virtual del CSDB pero me puedes decir Dominguito. / Hello! I'm the CSDB virtual assistant but you can call me Dominguito.
 # --- CONFIGURACIÓN ---
 CONFIG = {
     "PAGE_TITLE": "CSDB Assistant",
@@ -41,7 +41,7 @@ CONFIG = {
     "HEADER_IMAGE": "logo3.png",
     "APP_TITLE": "🎓 Virtual Assistant of the Santo Domingo Bilingual School",
     "APP_SUBHEADER": "Hello I'm Dominguito! I am here to answer your questions based on the information from the official page.",
-    "WELCOME_MESSAGE": "¿En qué puedo ayudarte? / Hello! I'm the CSDB virtual assistant but you can call me Dominguito. How can I help you?",
+    "WELCOME_MESSAGE": "¿En qué puedo ayudarte? / How can I help you?",
     "SPINNER_MESSAGE": "Generating response...",
     "PDF_DOCUMENT_PATH": "documento.pdf",
     "OFFICIAL_WEBSITE_URL": "https://colegiosantodomingo.edu.co/",
