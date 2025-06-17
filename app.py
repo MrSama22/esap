@@ -96,7 +96,64 @@ def load_local_css(file_name):
     except Exception as e:
         st.warning(f"No se pudo cargar el archivo CSS: {e}")
 
-
+def load_custom_chat_css():
+    """Aplica CSS personalizado para los avatares del chat"""
+    css = """
+    <style>
+    /* Ocultar los avatares predeterminados de Streamlit */
+    .stChatMessage > div:first-child {
+        display: none !important;
+    }
+    
+    /* Estilos para el contenedor del chat */
+    .chat-container {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+        gap: 12px;
+    }
+    
+    /* Avatar personalizado */
+    .custom-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+        border: 2px solid #e0e0e0;
+    }
+    
+    /* Contenido del mensaje */
+    .message-content {
+        background-color: #f0f2f6;
+        padding: 12px 16px;
+        border-radius: 16px;
+        max-width: 80%;
+        word-wrap: break-word;
+        color: black;
+    }
+    
+    /* Estilos específicos para el asistente */
+    .assistant-message {
+        flex-direction: row;
+    }
+    
+    .assistant-message .message-content {
+        background-color: #e3f2fd;
+    }
+    
+    /* Estilos específicos para el usuario */
+    .user-message {
+        flex-direction: row-reverse;
+        justify-content: flex-start;
+    }
+    
+    .user-message .message-content {
+        background-color: #f3e5f5;
+    }
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
 
 def get_avatar_path(role):
     """Obtiene la ruta del avatar según el rol"""
