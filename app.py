@@ -36,16 +36,16 @@ from audio_recorder_streamlit import audio_recorder
 
 # --- CONFIGURACIÓN ---
 CONFIG = {
-    "PAGE_TITLE": "Asistente CSDB",
+    "PAGE_TITLE": "CSDB Assistant",
     "PAGE_ICON": "🎓",
     "HEADER_IMAGE": "logo3.png",
-    "APP_TITLE": "🎓 Asistente Virtual del Colegio Santo Domingo BIilingüe",
-    "APP_SUBHEADER": "¡Hola! Estoy aquí para responder tus preguntas basándome en el documento oficial.",
+    "APP_TITLE": "🎓 Virtual Assistant of the Santo Domingo Bilingual School",
+    "APP_SUBHEADER": "Hello! I am here to answer your questions based on the information from the official page.",
     "WELCOME_MESSAGE": "¡Hola! Soy el asistente virtual del CSDB. ¿En qué puedo ayudarte? / Hello! I'm the CSDB virtual assistant. How can I help you?",
-    "SPINNER_MESSAGE": "Generando respuesta...", # Mensaje de spinner más específico
+    "SPINNER_MESSAGE": "Generating response...", # Mensaje de spinner más específico
     "PDF_DOCUMENT_PATH": "documento.pdf",
     "OFFICIAL_WEBSITE_URL": "https://colegiosantodomingo.edu.co/",
-    "WEBSITE_LINK_TEXT": "Visita la página web oficial",
+    "WEBSITE_LINK_TEXT": "Visit the official website",
     "CSS_FILE_PATH": "styles.css"
 }
 
@@ -57,8 +57,9 @@ LANG_CONFIG = {
             Eres un asistente experto del Colegio Santo Domingo Bilingüe. Tu única función es responder preguntas basándote en el contenido de un documento institucional que se te proporciona en el 'Contexto'.
             Instrucciones Críticas:
             1. Búsqueda Exhaustiva: Antes de responder, revisa CUIDADOSAMENTE y de forma COMPLETA todo el 'Contexto'. La respuesta SIEMPRE estará en ese texto.
-            2. Respuesta Directa: Si encuentras la respuesta, preséntala de forma clara y concisa.
+            2. Respuesta: Si encuentras la respuesta, preséntala de manera clara y concisa y añade información relacionada para ser más amable.
             3. Manejo de Incertidumbre: Solo si después de una búsqueda exhaustiva no encuentras una respuesta, indica amablemente que no tienes la información específica.
+            4. Regla : nunca menciones que sacaste la informacion de el documento que te di , solo di que lo sacaste de la pagina del colegio o de algun documento institucional.
             Contexto: <context>{context}</context>
             Pregunta: {input}
             Respuesta:
@@ -70,8 +71,9 @@ LANG_CONFIG = {
             You are an expert assistant for the Santo Domingo Bilingual School. Your sole function is to answer questions based on the content of an institutional document provided in the 'Context'.
             Critical Instructions:
             1. Exhaustive Search: Before answering, CAREFULLY and COMPLETELY review all the 'Context'. The answer will ALWAYS be in that text.
-            2. Direct Answer: If you find the answer, present it clearly and concisely.
+            2. Answer: If you find the answer, present it clearly and concisely and add related information to be more friendly.
             3. Handling Uncertainty: Only if after an exhaustive search you do not find an answer, kindly indicate that you do not have the information.
+            4. Rule: never mention that you got the information from the document I gave you, just say that you got it from the school's website or some institutional document.
             Context: <context>{context}</context>
             Question: {input}
             Answer:
