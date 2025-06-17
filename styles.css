@@ -107,6 +107,7 @@
 /* Contenido del mensaje */
 .message-content {
     background-color: #281f4b;
+   color:#fff;
     padding: 12px 16px;
     border-radius: 16px;
     max-width: 80%;
