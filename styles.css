@@ -77,3 +77,57 @@
     color: #1032cc; /* Un color rojo para el hover */
 
 }
+/* ==============================================
+   ESTILOS PARA AVATARES PERSONALIZADOS EN CHAT
+   ============================================== */
+
+/* Ocultar los avatares predeterminados de Streamlit */
+.stChatMessage > div:first-child {
+    display: none !important;
+}
+
+/* Estilos para el contenedor del chat */
+.chat-container {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    gap: 12px;
+}
+
+/* Avatar personalizado */
+.custom-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 2px solid #e0e0e0;
+}
+
+/* Contenido del mensaje */
+.message-content {
+    background-color: #f0f2f6;
+    padding: 12px 16px;
+    border-radius: 16px;
+    max-width: 80%;
+    word-wrap: break-word;
+}
+
+/* Estilos específicos para el asistente */
+.assistant-message {
+    flex-direction: row;
+}
+
+.assistant-message .message-content {
+    background-color: #e3f2fd;
+}
+
+/* Estilos específicos para el usuario */
+.user-message {
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+}
+
+.user-message .message-content {
+    background-color: #f3e5f5;
+}
