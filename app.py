@@ -48,7 +48,7 @@ CONFIG = {
     "WEBSITE_LINK_TEXT": "Visit the official website",
     "CSS_FILE_PATH": "styles.css",
     # --- NUEVAS CONFIGURACIONES PARA ICONOS PERSONALIZADOS ---
-    "ASSISTANT_AVATAR": "assistant_avatar.png",  # Tu imagen del asistente
+    "ASSISTANT_AVATAR": "assistantPhoto.png",  # Tu imagen del asistente
     "USER_AVATAR": "user_avatar.png"  # Tu imagen del usuario
 }
 
