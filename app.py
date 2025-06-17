@@ -42,11 +42,14 @@ CONFIG = {
     "APP_TITLE": "🎓 Virtual Assistant of the Santo Domingo Bilingual School",
     "APP_SUBHEADER": "Hello! I am here to answer your questions based on the information from the official page.",
     "WELCOME_MESSAGE": "¡Hola! Soy el asistente virtual del CSDB. ¿En qué puedo ayudarte? / Hello! I'm the CSDB virtual assistant. How can I help you?",
-    "SPINNER_MESSAGE": "Generating response...", # Mensaje de spinner más específico
+    "SPINNER_MESSAGE": "Generating response...",
     "PDF_DOCUMENT_PATH": "documento.pdf",
     "OFFICIAL_WEBSITE_URL": "https://colegiosantodomingo.edu.co/",
     "WEBSITE_LINK_TEXT": "Visit the official website",
-    "CSS_FILE_PATH": "styles.css"
+    "CSS_FILE_PATH": "styles.css",
+    # --- NUEVAS CONFIGURACIONES PARA ICONOS PERSONALIZADOS ---
+    "ASSISTANT_AVATAR": "assistant_avatar.png",  # Tu imagen del asistente
+    "USER_AVATAR": "user_avatar.png"  # Tu imagen del usuario
 }
 
 # --- CONFIGURACIÓN MULTILINGÜE ---
@@ -92,6 +95,111 @@ def load_local_css(file_name):
                 st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
     except Exception as e:
         st.warning(f"No se pudo cargar el archivo CSS: {e}")
+
+def load_custom_chat_css():
+    """Aplica CSS personalizado para los avatares del chat"""
+    css = """
+    <style>
+    /* Ocultar los avatares predeterminados de Streamlit */
+    .stChatMessage > div:first-child {
+        display: none !important;
+    }
+    
+    /* Estilos para el contenedor del chat */
+    .chat-container {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+        gap: 12px;
+    }
+    
+    /* Avatar personalizado */
+    .custom-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+        border: 2px solid #e0e0e0;
+    }
+    
+    /* Contenido del mensaje */
+    .message-content {
+        background-color: #f0f2f6;
+        padding: 12px 16px;
+        border-radius: 16px;
+        max-width: 80%;
+        word-wrap: break-word;
+    }
+    
+    /* Estilos específicos para el asistente */
+    .assistant-message {
+        flex-direction: row;
+    }
+    
+    .assistant-message .message-content {
+        background-color: #e3f2fd;
+    }
+    
+    /* Estilos específicos para el usuario */
+    .user-message {
+        flex-direction: row-reverse;
+        justify-content: flex-start;
+    }
+    
+    .user-message .message-content {
+        background-color: #f3e5f5;
+    }
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
+
+def get_avatar_path(role):
+    """Obtiene la ruta del avatar según el rol"""
+    if role == "assistant":
+        return CONFIG["ASSISTANT_AVATAR"]
+    else:
+        return CONFIG["USER_AVATAR"]
+
+def render_chat_message(role, content, audio=None):
+    """Renderiza un mensaje de chat con avatar personalizado"""
+    avatar_path = get_avatar_path(role)
+    
+    # Verificar si existe la imagen del avatar
+    if os.path.exists(avatar_path):
+        avatar_html = f'<img src="data:image/png;base64,{get_base64_image(avatar_path)}" class="custom-avatar">'
+    else:
+        # Fallback a emoji si no existe la imagen
+        avatar_emoji = "🤖" if role == "assistant" else "👤"
+        avatar_html = f'<div class="custom-avatar" style="display: flex; align-items: center; justify-content: center; background-color: #ddd; font-size: 20px;">{avatar_emoji}</div>'
+    
+    message_class = "assistant-message" if role == "assistant" else "user-message"
+    
+    chat_html = f"""
+    <div class="chat-container {message_class}">
+        {avatar_html}
+        <div class="message-content">
+            {content}
+        </div>
+    </div>
+    """
+    
+    st.markdown(chat_html, unsafe_allow_html=True)
+    
+    # Mostrar audio si existe
+    if audio:
+        st.audio(audio, format='audio/mp3', autoplay=True)
+
+@st.cache_data
+def get_base64_image(image_path):
+    """Convierte una imagen a base64 para embebir en HTML"""
+    import base64
+    try:
+        with open(image_path, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode()
+    except Exception as e:
+        st.warning(f"No se pudo cargar la imagen {image_path}: {e}")
+        return None
 
 @st.cache_resource
 def verify_credentials_and_get_clients():
@@ -168,6 +276,7 @@ def speech_to_text(client, audio_bytes):
 def main():
     st.set_page_config(page_title=CONFIG["PAGE_TITLE"], page_icon=CONFIG["PAGE_ICON"], layout="wide")
     load_local_css(CONFIG["CSS_FILE_PATH"])
+    load_custom_chat_css()  # Cargar CSS personalizado para avatares
 
     # --- INICIALIZACIÓN ---
     tts_client, stt_client = verify_credentials_and_get_clients()
@@ -203,38 +312,34 @@ def main():
     # --- LÓGICA DE RENDERIZADO DEL CHAT ---
     # 1. Dibuja todos los mensajes que ya han sido completados.
     for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-            if message.get("audio"):
-                st.audio(message["audio"], format='audio/mp3', autoplay=True)
+        render_chat_message(message["role"], message["content"], message.get("audio"))
 
     # 2. Revisa si hay un nuevo prompt que necesite ser procesado.
     if prompt := st.session_state.get("prompt_to_process"):
         # Muestra el placeholder del asistente con el spinner.
-        with st.chat_message("assistant"):
-            with st.spinner(CONFIG["SPINNER_MESSAGE"]):
-                # Lógica de negocio: procesa el prompt para obtener la respuesta.
-                try:
-                    lang_code = detect(prompt)
-                    if lang_code not in LANG_CONFIG: lang_code = DEFAULT_LANG
-                except LangDetectException:
-                    lang_code = DEFAULT_LANG
-                
-                selected_lang_config = LANG_CONFIG[lang_code]
-                prompt_obj = ChatPromptTemplate.from_template(selected_lang_config["prompt_template"])
-                document_chain = create_stuff_documents_chain(llm, prompt_obj)
-                rag_chain = create_retrieval_chain(retriever, document_chain)
-                
-                response = rag_chain.invoke({"input": prompt})
-                respuesta_ia = response.get("answer", "No pude encontrar una respuesta.")
-                audio_content = text_to_speech(tts_client, respuesta_ia, selected_lang_config["tts_voice"])
+        with st.spinner(CONFIG["SPINNER_MESSAGE"]):
+            # Lógica de negocio: procesa el prompt para obtener la respuesta.
+            try:
+                lang_code = detect(prompt)
+                if lang_code not in LANG_CONFIG: lang_code = DEFAULT_LANG
+            except LangDetectException:
+                lang_code = DEFAULT_LANG
+            
+            selected_lang_config = LANG_CONFIG[lang_code]
+            prompt_obj = ChatPromptTemplate.from_template(selected_lang_config["prompt_template"])
+            document_chain = create_stuff_documents_chain(llm, prompt_obj)
+            rag_chain = create_retrieval_chain(retriever, document_chain)
+            
+            response = rag_chain.invoke({"input": prompt})
+            respuesta_ia = response.get("answer", "No pude encontrar una respuesta.")
+            audio_content = text_to_speech(tts_client, respuesta_ia, selected_lang_config["tts_voice"])
 
-                # Añade la respuesta final al historial de mensajes.
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": respuesta_ia,
-                    "audio": audio_content
-                })
+            # Añade la respuesta final al historial de mensajes.
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": respuesta_ia,
+                "audio": audio_content
+            })
         
         # Limpia el prompt pendiente y re-ejecuta para mostrar la respuesta final.
         st.session_state.prompt_to_process = None
