@@ -40,12 +40,12 @@ CONFIG = {
     "PAGE_ICON": "🎓",
     "HEADER_IMAGE": "logo3.png",
     "APP_TITLE": "🎓 Virtual Assistant of the Santo Domingo Bilingual School",
-    "APP_SUBHEADER": "Hello! I am here to answer your questions based on the information from the official page.",
-    "WELCOME_MESSAGE": "¡Hola! Soy el asistente virtual del CSDB. ¿En qué puedo ayudarte? / Hello! I'm the CSDB virtual assistant. How can I help you?",
+    "APP_SUBHEADER": "Hello I'm Dominguito! I am here to answer your questions based on the information from the official page.",
+    "WELCOME_MESSAGE": "¡Hola! Soy el asistente virtual del CSDB pero me puedes decir Dominguito. ¿En qué puedo ayudarte? / Hello! I'm the CSDB virtual assistant but you can call me Dominguito. How can I help you?",
     "SPINNER_MESSAGE": "Generating response...",
     "PDF_DOCUMENT_PATH": "documento.pdf",
     "OFFICIAL_WEBSITE_URL": "https://colegiosantodomingo.edu.co/",
-    "WEBSITE_LINK_TEXT": "Visit the official website",
+    "WEBSITE_LINK_TEXT": "school´s official page",
     "CSS_FILE_PATH": "styles.css",
     # --- NUEVAS CONFIGURACIONES PARA ICONOS PERSONALIZADOS ---
     "ASSISTANT_AVATAR": "assistantPhoto.png",  # Tu imagen del asistente
@@ -57,12 +57,12 @@ LANG_CONFIG = {
     "es": {
         "tts_voice": {"language_code": "es-US", "name": "es-US-Standard-B"},
         "prompt_template": """
-            Eres un asistente experto del Colegio Santo Domingo Bilingüe. Tu única función es responder preguntas basándote en el contenido de un documento institucional que se te proporciona en el 'Contexto'.
+            Eres un asistente experto del Colegio Santo Domingo Bilingüe y la mascota oficial del colegio , tu nombre es Dominguito. Tu única función es responder preguntas basándote en el contenido de un documento institucional que se te proporciona en el 'Contexto'.
             Instrucciones Críticas:
             1. Búsqueda Exhaustiva: Antes de responder, revisa CUIDADOSAMENTE y de forma COMPLETA todo el 'Contexto'. La respuesta SIEMPRE estará en ese texto.
             2. Respuesta: Si encuentras la respuesta, preséntala de manera clara y concisa y añade información relacionada para ser más amable.
             3. Manejo de Incertidumbre: Solo si después de una búsqueda exhaustiva no encuentras una respuesta, indica amablemente que no tienes la información específica.
-            4. Regla : nunca menciones que sacaste la informacion de el documento que te di , solo di que lo sacaste de la pagina del colegio o de algun documento institucional.
+            4. Regla : nunca menciones que sacaste la informacion de el documento que te di , solo di que lo sacaste de la pagina del colegio o de unos documentos institucionales.
             Contexto: <context>{context}</context>
             Pregunta: {input}
             Respuesta:
@@ -71,12 +71,12 @@ LANG_CONFIG = {
     "en": {
         "tts_voice": {"language_code": "en-US", "name": "en-US-Wavenet-C"},
         "prompt_template": """
-            You are an expert assistant for the Santo Domingo Bilingual School. Your sole function is to answer questions based on the content of an institutional document provided in the 'Context'.
+            You are an expert assistant for the Santo Domingo Bilingual School and the official pet of the school, your name is Dominguito. Your sole function is to answer questions based on the content of an institutional document provided in the 'Context'.
             Critical Instructions:
             1. Exhaustive Search: Before answering, CAREFULLY and COMPLETELY review all the 'Context'. The answer will ALWAYS be in that text.
             2. Answer: If you find the answer, present it clearly and concisely and add related information to be more friendly.
             3. Handling Uncertainty: Only if after an exhaustive search you do not find an answer, kindly indicate that you do not have the information.
-            4. Rule: never mention that you got the information from the document I gave you, just say that you got it from the school's website or some institutional document.
+            4. Rule: never mention that you got the information from the document I gave you, just say that you got it from the school's website or an institutional document.
             Context: <context>{context}</context>
             Question: {input}
             Answer:
@@ -367,7 +367,7 @@ def main():
             st.toast("No pude entender lo que dijiste.", icon="🎙️")
     
     st.divider()
-    st.caption(f"Para más información, visita la [{CONFIG['WEBSITE_LINK_TEXT']}]({CONFIG['OFFICIAL_WEBSITE_URL']}).")
+    st.caption(f"For more information, visit the [{CONFIG['WEBSITE_LINK_TEXT']}]({CONFIG['OFFICIAL_WEBSITE_URL']}).")
 
 if __name__ == "__main__":
     try:
