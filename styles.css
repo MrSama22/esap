@@ -4,131 +4,127 @@
 
 .block-container {
 
-    padding-top: 2rem;
-
-    padding-bottom: 2rem;
-
-    padding-left: 5rem;
-
-    padding-right: 5rem;
-
-}
-
-
-
-/* --- Ocultar Elementos de Streamlit --- */
-
-/* Oculta el menú de hamburguesa y el pie de página de Streamlit */
-
-#MainMenu, footer, header {
-
-    visibility: hidden;
-
-}
-
-
-
-/* --- Contenedor del Header --- */
-
-.header-container {
-
-    padding: 0 !important;
-
-    /* Margen negativo para que la imagen del header se pegue a los bordes */
-
-    margin: -2rem -5rem 2rem -5rem;
-
-}
-
-
-
-
-
-/* --- Estilos para el enlace del pie de página --- */
-
-.footer-link {
-
-    text-align: center;
-
-}
-
-
-
-.footer-link a {
-
-    text-decoration: none;
-
-    color: #004a80; /* Un color azul oscuro corporativo */
-
-    font-weight: bold;
-
-    font-size: 1.1rem; /* Un poco más grande para que destaque */
-
-}
-
-
-
-/* Estilo para cuando el mouse pasa por encima del enlace */
-
-.footer-link a:hover {
-
-    text-decoration: underline;
-
-    color: #1032cc; /* Un color rojo para el hover */
-
-}
-/* ==============================================
-   ESTILOS PARA AVATARES PERSONALIZADOS EN CHAT
-   ============================================== */
-
-/* Ocultar los avatares predeterminados de Streamlit */
-.stChatMessage > div:first-child {
-    display: none !important;
-}
-
-/* Estilos para el contenedor del chat */
-.chat-container {
-    display: flex;
-    align-items: flex-start;
-    margin-bottom: 1rem;
-    gap: 12px;
-}
-
-/* Avatar personalizado */
-.custom-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    object-fit: cover;
-    flex-shrink: 0;
-    border: 2px solid #e0e0e0;
-}
-
-/* Contenido del mensaje */
-.message-content {
-    background-color: #281f4b;
-   color:black;
-    padding: 12px 16px;
-    border-radius: 16px;
-    max-width: 80%;
-    word-wrap: break-word;
-}
-
-/* Estilos específicos para el asistente */
-.assistant-message {
-    flex-direction: row;
-}
-
-.assistant-message .message-content {
-    background-color: #e3f2fd;
-}
-
-/* Estilos específicos para el usuario */
-.user-message {
-    flex-direction: row-reverse;
-    justify-content: flex-start;
-}
-
-.user-message .message-content {
-    background-color: #f3e5f5;
-}
+    padding-top: 2rem;
+    
+    padding-bottom: 2rem;
+    
+    padding-left: 5rem;
+    
+    padding-right: 5rem;
+    
+    }
+    
+    
+    
+    /* --- Ocultar Elementos de Streamlit --- */
+    
+    /* Oculta el menú de hamburguesa y el pie de página de Streamlit */
+    
+    #MainMenu, footer, header {
+    
+    visibility: hidden;
+    
+    }
+    
+    
+    
+    /* --- Contenedor del Header --- */
+    
+    .header-container {
+    
+    padding: 0 !important;
+    
+    /* Margen negativo para que la imagen del header se pegue a los bordes */
+    
+    margin: -2rem -5rem 2rem -5rem;
+    
+    }
+    
+    
+    
+    
+    
+    /* --- Estilos para el enlace del pie de página --- */
+    
+    .footer-link {
+    
+    text-align: center;
+    
+    }
+    
+    
+    
+    .footer-link a {
+        text-decoration: none;
+        color: #004a80; /* Un color azul oscuro corporativo */
+        font-weight: bold;
+        font-size: 1.1rem; /* Un poco más grande para que destaque */
+    
+    }
+    
+    
+    
+    /* Estilo para cuando el mouse pasa por encima del enlace */
+    
+    .footer-link a:hover {
+        
+        text-decoration: underline;
+        color: #1032cc; /* Un color rojo para el hover */
+    
+    }
+    /* ==============================================
+       ESTILOS PARA AVATARES PERSONALIZADOS EN CHAT
+       ============================================== */
+    
+    /* Ocultar los avatares predeterminados de Streamlit */
+    .stChatMessage > div:first-child {
+        display: none !important;
+    }
+    
+    /* Estilos para el contenedor del chat */
+    .chat-container {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+        gap: 12px;
+    }
+    
+    /* Avatar personalizado */
+    .custom-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+        border: 2px solid #e0e0e0;
+    }
+    
+    /* Contenido del mensaje */
+    .message-content {
+        background-color: #281f4b;
+        padding: 12px 16px;
+        border-radius: 16px;
+        max-width: 80%;
+        word-wrap: break-word;
+        color: black;
+    }
+    
+    /* Estilos específicos para el asistente */
+    .assistant-message {
+        flex-direction: row;
+    }
+    
+    .assistant-message .message-content {
+        background-color: #e3f2fd;
+    }
+    
+    /* Estilos específicos para el usuario */
+    .user-message {
+        flex-direction: row-reverse;
+        justify-content: flex-start;
+    }
+    
+    .user-message .message-content {
+        background-color: #f3e5f5;
+    }
+    
