@@ -36,7 +36,7 @@ from audio_recorder_streamlit import audio_recorder
 #¡Hola! Soy el asistente virtual del CSDB pero me puedes decir Dominguito. / Hello! I'm the CSDB virtual assistant but you can call me Dominguito.
 # --- CONFIGURACIÓN ---
 CONFIG = {
-    "PAGE_TITLE": "CSDB Assistant",
+    "PAGE_TITLE": "ESAP Assistant",
     "PAGE_ICON": "🎓",
     "HEADER_IMAGE": "logos/logo2.png",
     "APP_TITLE": "🎓 Virtual Assistant of the ESAP",
@@ -64,7 +64,7 @@ LANG_CONFIG = {
             1. Búsqueda Exhaustiva: Antes de responder, revisa CUIDADOSAMENTE y de forma COMPLETA todo el 'Contexto'. La respuesta SIEMPRE estará en ese texto.
             2. Respuesta: Si encuentras la respuesta, preséntala de manera clara y concisa, usa siempre el documento mas actualizado a la fecha actual (2025).
             3. Manejo de Incertidumbre: Solo si después de una búsqueda exhaustiva no encuentras una respuesta, indica amablemente que no tienes la información específica.
-            4. Manejo de fuentes: al terminar de dar la respuessta , dile al usuario de donde que documentos sacaste la informacion y el numero de pagina.
+            4. Manejo de fuentes: al terminar de dar la respuessta , dile al usuario de donde que documentos sacaste la informacion y el numero de pagina, especifica siempre los nombres.
             Contexto: <context>{context}</context>
             Pregunta: {input}
             Respuesta:
@@ -78,7 +78,7 @@ LANG_CONFIG = {
             1. Exhaustive Search: Before answering, CAREFULLY and COMPLETELY review all the 'Context'. The answer will ALWAYS be in that text.
             2. Answer: If you find the answer, present it clearly and concisely, always using the most up-to-date document as of the current date (2025).
             3. Handling Uncertainty: Only if after an exhaustive search you do not find an answer, kindly indicate that you do not have the information.
-            4. Source management: after giving the answer, tell the user where you obtained the information, the document, the page number also.
+            4. Source management: at the end of giving the answer, tell the user from which documents you obtained the information and the page number, always specifying the names.
             Context: <context>{context}</context>
             Question: {input}
             Answer:
