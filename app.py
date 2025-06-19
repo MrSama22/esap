@@ -43,7 +43,7 @@ CONFIG = {
     "APP_SUBHEADER": "Hello I'm Dominguito! I am here to answer your questions based on the information from the official page.",
     "WELCOME_MESSAGE": "¿En qué puedo ayudarte? / How can I help you?",
     "SPINNER_MESSAGE": "Generating response...",
-    "PDF_DOCUMENT_BASE_PATH": "documento", # Base name for PDF documents
+    "PDF_DOCUMENT_BASE_PATH": "documentos/documento", # Base name for PDF documents
     "MAX_PDF_DOCUMENTS": 100, # Maximum number of PDF documents to load (documento.pdf, documento1.pdf, etc.)
     "OFFICIAL_WEBSITE_URL": "https://colegiosantodomingo.edu.co/",
     "WEBSITE_LINK_TEXT": "school´s official page",
