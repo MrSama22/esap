@@ -43,8 +43,9 @@ CONFIG = {
     "APP_SUBHEADER": "Hello I'm Dominguito! I am here to answer your questions based on the information from the official page.",
     "WELCOME_MESSAGE": "¿En qué puedo ayudarte? / How can I help you?",
     "SPINNER_MESSAGE": "Generating response...",
-    "PDF_DOCUMENT_BASE_PATH": "documentos/documento", # Base name for PDF documents
-    "MAX_PDF_DOCUMENTS": 100, # Maximum number of PDF documents to load (documento.pdf, documento1.pdf, etc.)
+    # !!! CAMBIO AQUÍ: Ahora es la RUTA DE LA CARPETA, no una base de nombre de archivo !!!
+    "PDF_DOCUMENT_BASE_PATH": "documentos", # Path to the folder containing all PDF documents
+    "MAX_PDF_DOCUMENTS": 100, # This setting is now less relevant as we load all PDFs in the folder
     "OFFICIAL_WEBSITE_URL": "https://colegiosantodomingo.edu.co/",
     "WEBSITE_LINK_TEXT": "school´s official page",
     "CSS_FILE_PATH": "styles.css",
@@ -58,7 +59,7 @@ LANG_CONFIG = {
     "es": {
         "tts_voice": {"language_code": "es-US", "name": "es-US-Standard-B"},
         "prompt_template": """
-            Eres un asistente experto del La universidad de la ESAP. Tu única función es responder preguntas basándote en el contenido de los documentos  que se te proporcionan en el 'Contexto'.
+            Eres un asistente experto del La universidad de la ESAP. Tu única función es responder preguntas basándote en el contenido de los documentos que se te proporcionan en el 'Contexto'.
             Instrucciones Críticas:
             1. Búsqueda Exhaustiva: Antes de responder, revisa CUIDADOSAMENTE y de forma COMPLETA todo el 'Contexto'. La respuesta SIEMPRE estará en ese texto.
             2. Respuesta: Si encuentras la respuesta, preséntala de manera clara y concisa y añade información relacionada para ser más amable.
@@ -216,33 +217,32 @@ def verify_credentials_and_get_clients():
 @st.cache_resource
 def initialize_rag_components(_llm):
     try:
-        all_docs = []
-        found_docs = False
-
-        # Try to load documento.pdf
-        main_doc_path = f"{CONFIG['PDF_DOCUMENT_BASE_PATH']}.pdf"
-        if os.path.exists(main_doc_path):
-            loader = PyPDFLoader(main_doc_path)
-            all_docs.extend(loader.load())
-            found_docs = True
+        pdf_folder_path = CONFIG["PDF_DOCUMENT_BASE_PATH"]
         
-        # Try to load documento1.pdf, documento2.pdf, etc.
-        for i in range(1, CONFIG["MAX_PDF_DOCUMENTS"]):
-            indexed_doc_path = f"{CONFIG['PDF_DOCUMENT_BASE_PATH']}{i}.pdf"
-            if os.path.exists(indexed_doc_path):
-                loader = PyPDFLoader(indexed_doc_path)
-                all_docs.extend(loader.load())
-                found_docs = True
-            else:
-                # Stop if we don't find a sequential document
-                break
+        if not os.path.isdir(pdf_folder_path):
+            st.error(f"Error: La carpeta de documentos PDF '{pdf_folder_path}' no existe o no es un directorio válido.", icon="🚨")
+            return None
 
-        if not found_docs:
-            st.error(f"Error: No se encontró ningún documento PDF con el patrón '{CONFIG['PDF_DOCUMENT_BASE_PATH']}.pdf' o '{CONFIG['PDF_DOCUMENT_BASE_PATH']}[n].pdf'.", icon="🚨")
+        all_docs = []
+        found_pdfs = False
+        
+        # Iterar sobre todos los archivos en la carpeta
+        for filename in os.listdir(pdf_folder_path):
+            if filename.lower().endswith(".pdf"):
+                file_path = os.path.join(pdf_folder_path, filename)
+                try:
+                    loader = PyPDFLoader(file_path)
+                    all_docs.extend(loader.load())
+                    found_pdfs = True
+                except Exception as e:
+                    st.warning(f"No se pudo cargar el archivo PDF '{filename}': {e}", icon="⚠️")
+        
+        if not found_pdfs:
+            st.error(f"Error: No se encontró ningún documento PDF en la carpeta: {pdf_folder_path}", icon="🚨")
             return None
         
         if not all_docs:
-            st.error("Error: No se pudo cargar contenido de ningún documento PDF encontrado.", icon="🚨")
+            st.error("Error: No se pudo extraer contenido de ningún documento PDF encontrado.", icon="🚨")
             return None
 
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
