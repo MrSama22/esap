@@ -43,7 +43,8 @@ CONFIG = {
     "APP_SUBHEADER": "Hello I'm Dominguito! I am here to answer your questions based on the information from the official page.",
     "WELCOME_MESSAGE": "¿En qué puedo ayudarte? / How can I help you?",
     "SPINNER_MESSAGE": "Generating response...",
-    "PDF_DOCUMENT_PATH": "documento.pdf",
+    "PDF_DOCUMENT_BASE_PATH": "documento", # Base name for PDF documents
+    "MAX_PDF_DOCUMENTS": 100, # Maximum number of PDF documents to load (documento.pdf, documento1.pdf, etc.)
     "OFFICIAL_WEBSITE_URL": "https://colegiosantodomingo.edu.co/",
     "WEBSITE_LINK_TEXT": "school´s official page",
     "CSS_FILE_PATH": "styles.css",
@@ -57,12 +58,11 @@ LANG_CONFIG = {
     "es": {
         "tts_voice": {"language_code": "es-US", "name": "es-US-Standard-B"},
         "prompt_template": """
-            Eres un asistente experto del Colegio Santo Domingo Bilingüe . Tu única función es responder preguntas basándote en el contenido de un documento institucional que se te proporciona en el 'Contexto'.
+            Eres un asistente experto del La universidad de la ESAP. Tu única función es responder preguntas basándote en el contenido de los documentos  que se te proporcionan en el 'Contexto'.
             Instrucciones Críticas:
             1. Búsqueda Exhaustiva: Antes de responder, revisa CUIDADOSAMENTE y de forma COMPLETA todo el 'Contexto'. La respuesta SIEMPRE estará en ese texto.
             2. Respuesta: Si encuentras la respuesta, preséntala de manera clara y concisa y añade información relacionada para ser más amable.
             3. Manejo de Incertidumbre: Solo si después de una búsqueda exhaustiva no encuentras una respuesta, indica amablemente que no tienes la información específica.
-            4. Regla : nunca menciones que sacaste la informacion de el documento que te di , solo di que lo sacaste de la pagina del colegio o de unos documentos institucionales.
             Contexto: <context>{context}</context>
             Pregunta: {input}
             Respuesta:
@@ -71,12 +71,11 @@ LANG_CONFIG = {
     "en": {
         "tts_voice": {"language_code": "en-US", "name": "en-US-Wavenet-C"},
         "prompt_template": """
-            You are an expert assistant for the Santo Domingo Bilingual School. Your sole function is to answer questions based on the content of an institutional document provided in the 'Context'.
+            You are an expert assistant for the ESAP university. Your sole function is to answer questions based on the content of the documents provided in the 'Context'.
             Critical Instructions:
             1. Exhaustive Search: Before answering, CAREFULLY and COMPLETELY review all the 'Context'. The answer will ALWAYS be in that text.
             2. Answer: If you find the answer, present it clearly and concisely and add related information to be more friendly.
             3. Handling Uncertainty: Only if after an exhaustive search you do not find an answer, kindly indicate that you do not have the information.
-            4. Rule: never mention that you got the information from the document I gave you, just say that you got it from the school's website or an institutional document.
             Context: <context>{context}</context>
             Question: {input}
             Answer:
@@ -217,14 +216,37 @@ def verify_credentials_and_get_clients():
 @st.cache_resource
 def initialize_rag_components(_llm):
     try:
-        if not os.path.exists(CONFIG["PDF_DOCUMENT_PATH"]):
-            st.error(f"Error: No se encontró el documento PDF en la ruta: {CONFIG['PDF_DOCUMENT_PATH']}", icon="🚨")
+        all_docs = []
+        found_docs = False
+
+        # Try to load documento.pdf
+        main_doc_path = f"{CONFIG['PDF_DOCUMENT_BASE_PATH']}.pdf"
+        if os.path.exists(main_doc_path):
+            loader = PyPDFLoader(main_doc_path)
+            all_docs.extend(loader.load())
+            found_docs = True
+        
+        # Try to load documento1.pdf, documento2.pdf, etc.
+        for i in range(1, CONFIG["MAX_PDF_DOCUMENTS"]):
+            indexed_doc_path = f"{CONFIG['PDF_DOCUMENT_BASE_PATH']}{i}.pdf"
+            if os.path.exists(indexed_doc_path):
+                loader = PyPDFLoader(indexed_doc_path)
+                all_docs.extend(loader.load())
+                found_docs = True
+            else:
+                # Stop if we don't find a sequential document
+                break
+
+        if not found_docs:
+            st.error(f"Error: No se encontró ningún documento PDF con el patrón '{CONFIG['PDF_DOCUMENT_BASE_PATH']}.pdf' o '{CONFIG['PDF_DOCUMENT_BASE_PATH']}[n].pdf'.", icon="🚨")
             return None
         
-        loader = PyPDFLoader(CONFIG["PDF_DOCUMENT_PATH"])
-        docs = loader.load()
+        if not all_docs:
+            st.error("Error: No se pudo cargar contenido de ningún documento PDF encontrado.", icon="🚨")
+            return None
+
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-        chunks = text_splitter.split_documents(docs)
+        chunks = text_splitter.split_documents(all_docs)
         
         api_key = st.secrets.get("GOOGLE_API_KEY")
         embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
@@ -285,8 +307,12 @@ def main():
     if not api_key:
         st.error("Error: GOOGLE_API_KEY no está configurada.", icon="🚨")
         st.stop()
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key, temperature=0)
+    
+    # Using gemini-1.5-pro for better understanding of complex documents including tables.
+    # Note: This model might have different cost implications than gemini-1.5-flash.
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro", google_api_key=api_key, temperature=0)
     retriever = initialize_rag_components(llm)
+    
     if not all([tts_client, stt_client, retriever, llm]):
         st.error("La aplicación no puede continuar debido a un error de inicialización.", icon="🛑")
         st.stop()
