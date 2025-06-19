@@ -39,15 +39,15 @@ CONFIG = {
     "PAGE_TITLE": "CSDB Assistant",
     "PAGE_ICON": "🎓",
     "HEADER_IMAGE": "logos/logo1.png",
-    "APP_TITLE": "🎓 Virtual Assistant of the Santo Domingo Bilingual School",
-    "APP_SUBHEADER": "Hello I'm Dominguito! I am here to answer your questions based on the information from the official page.",
+    "APP_TITLE": "🎓 Virtual Assistant of the ESAP",
+    "APP_SUBHEADER": "Hello ! I am here to answer your questions based on the information",
     "WELCOME_MESSAGE": "¿En qué puedo ayudarte? / How can I help you?",
     "SPINNER_MESSAGE": "Generating response...",
     # !!! CAMBIO AQUÍ: Ahora es la RUTA DE LA CARPETA, no una base de nombre de archivo !!!
     "PDF_DOCUMENT_BASE_PATH": "documentos", # Path to the folder containing all PDF documents
     "MAX_PDF_DOCUMENTS": 100, # This setting is now less relevant as we load all PDFs in the folder
-    "OFFICIAL_WEBSITE_URL": "https://colegiosantodomingo.edu.co/",
-    "WEBSITE_LINK_TEXT": "school´s official page",
+    "OFFICIAL_WEBSITE_URL": "https://www.esap.edu.co/",
+    "WEBSITE_LINK_TEXT": "official page",
     "CSS_FILE_PATH": "styles.css",
     # --- NUEVAS CONFIGURACIONES PARA ICONOS PERSONALIZADOS ---
     "ASSISTANT_AVATAR": "assistantPhoto.png",  # Tu imagen del asistente
@@ -62,9 +62,9 @@ LANG_CONFIG = {
             Eres un asistente experto del La universidad de la ESAP. Tu única función es responder preguntas basándote en el contenido de los documentos que se te proporcionan en el 'Contexto'.
             Instrucciones Críticas:
             1. Búsqueda Exhaustiva: Antes de responder, revisa CUIDADOSAMENTE y de forma COMPLETA todo el 'Contexto'. La respuesta SIEMPRE estará en ese texto.
-            2. Respuesta: Si encuentras la respuesta, preséntala de manera clara y concisa y añade información relacionada para ser más amable , usa siempre el documento mas actualizado a la fecha.
+            2. Respuesta: Si encuentras la respuesta, preséntala de manera clara y concisa y estricta con que sea totalmente verdadera, usa siempre el documento mas actualizado a la fecha actual.
             3. Manejo de Incertidumbre: Solo si después de una búsqueda exhaustiva no encuentras una respuesta, indica amablemente que no tienes la información específica.
-            4. Manejo de fuentes: al terminar de dar la respuessta , dile al usuario de donde que documentos sacaste la informacion.
+            4. Manejo de fuentes: al terminar de dar la respuessta , dile al usuario de donde que documentos sacaste la informacion y la pagina y una url.
             Contexto: <context>{context}</context>
             Pregunta: {input}
             Respuesta:
@@ -76,9 +76,9 @@ LANG_CONFIG = {
             You are an expert assistant for the ESAP university. Your sole function is to answer questions based on the content of the documents provided in the 'Context'.
             Critical Instructions:
             1. Exhaustive Search: Before answering, CAREFULLY and COMPLETELY review all the 'Context'. The answer will ALWAYS be in that text.
-            2. Answer: If you find the answer, present it clearly and concisely and add related information to be more helpful, always use the most up-to-date document available.
+            2. Answer: If you find the answer, present it clearly and concisely and ensure that it is completely true, always using the most up-to-date document as of the current date.
             3. Handling Uncertainty: Only if after an exhaustive search you do not find an answer, kindly indicate that you do not have the information.
-            4. Source management: after finishing the answer, tell the user from which documents you obtained the information.
+            4. Source management: after giving the answer, tell the user where you obtained the information, the document, the page, and a URL.
             Context: <context>{context}</context>
             Question: {input}
             Answer:
