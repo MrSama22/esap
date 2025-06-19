@@ -38,7 +38,7 @@ from audio_recorder_streamlit import audio_recorder
 CONFIG = {
     "PAGE_TITLE": "CSDB Assistant",
     "PAGE_ICON": "🎓",
-    "HEADER_IMAGE": "logo3.png",
+    "HEADER_IMAGE": "logos/logo1.png",
     "APP_TITLE": "🎓 Virtual Assistant of the Santo Domingo Bilingual School",
     "APP_SUBHEADER": "Hello I'm Dominguito! I am here to answer your questions based on the information from the official page.",
     "WELCOME_MESSAGE": "¿En qué puedo ayudarte? / How can I help you?",
