@@ -59,7 +59,7 @@ LANG_CONFIG = {
     "es": {
         "tts_voice": {"language_code": "es-US", "name": "es-US-Standard-B"},
         "prompt_template": """
-            Eres un asistente experto del La universidad de la ESAP. Tu única función es responder preguntas basándote en el contenido de los documentos que se te proporcionan en el 'Contexto'.
+            Eres un asistente experto del La universidad de la ESAP. Tu única función es responder preguntas basándote en el contenido de los documentos que se te proporcionan en el 'documentos'.
             Instrucciones Críticas:
             1. Búsqueda Exhaustiva: Antes de responder, revisa CUIDADOSAMENTE y de forma COMPLETA todo el 'Contexto'. La respuesta SIEMPRE estará en ese texto.
             2. Respuesta: Si encuentras la respuesta, preséntala de manera clara y concisa, usa siempre el documento mas actualizado a la fecha actual (2025).
@@ -73,7 +73,7 @@ LANG_CONFIG = {
     "en": {
         "tts_voice": {"language_code": "en-US", "name": "en-US-Wavenet-C"},
         "prompt_template": """
-            You are an expert assistant for the ESAP university. Your sole function is to answer questions based on the content of the documents provided in the 'Context'.
+            You are an expert assistant for the ESAP university. Your sole function is to answer questions based on the content of the documents provided in the 'documents'.
             Critical Instructions:
             1. Exhaustive Search: Before answering, CAREFULLY and COMPLETELY review all the 'Context'. The answer will ALWAYS be in that text.
             2. Answer: If you find the answer, present it clearly and concisely, always using the most up-to-date document as of the current date (2025).
